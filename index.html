@@ -3,2130 +3,1564 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>EvalMonk — Observe. Evaluate. Guard.</title>
-<meta name="description" content="EvalMonk is an observability and evals platform for domain-specific, mission-critical LLM agents in production. Take the guesswork out of prompt-engineering, increase reliability, and safeguard against adversarial prompts." />
+<title>EvalMonk - Observability, Evals, and Guardrails for AI Agents</title>
+<meta name="description" content="EvalMonk gives production AI agents shared tracing, evaluations, and guardrails through one SDK and one agent-installable workflow." />
+<meta name="theme-color" content="#f6f1e6" />
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Noto+Serif+SC:wght@300;400;500;700;900&family=Ma+Shan+Zheng&family=Liu+Jian+Mao+Cao&family=ZCOOL+XiaoWei&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
 
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='38' fill='none' stroke='%2314110d' stroke-width='7' stroke-linecap='round' stroke-dasharray='222 32' transform='rotate(95 50 50)'/></svg>" />
+<link rel="icon" type="image/svg+xml" sizes="any" href="assets/favicon.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png" />
+<link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png" />
+<link rel="shortcut icon" href="assets/favicon.ico" />
+<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png" />
+<link rel="manifest" href="assets/site.webmanifest" />
+<link rel="mask-icon" href="assets/favicon.svg" color="#171511" />
 
 <style>
-  /* ---------- Tokens ---------- */
   :root {
-    --paper: #f1ead8;
-    --paper-warm: #ede4cd;
-    --paper-deep: #e3d7b8;
-    --ink: #14110d;
-    --ink-soft: #2a241d;
-    --ink-mute: #5a4f3f;
-    --ink-faint: rgba(20, 17, 13, 0.55);
-    --vermilion: #a8332a;
-    --vermilion-deep: #7a1f18;
-    --gold: #8b6914;
-    --jade: #4a6450;
-    --rule: rgba(20, 17, 13, 0.18);
-    --serif: 'Cormorant Garamond', 'Noto Serif SC', serif;
-    --hand: 'Ma Shan Zheng', 'Noto Serif SC', serif;
-    --brush: 'Liu Jian Mao Cao', 'Ma Shan Zheng', serif;
-    --display: 'ZCOOL XiaoWei', 'Noto Serif SC', serif;
-    --sans: 'Inter', system-ui, -apple-system, sans-serif;
-    --maxw: 1200px;
+    color-scheme: light;
+    --paper: #f6f1e6;
+    --paper-2: #ebe2cf;
+    --surface: #fffaf1;
+    --surface-2: #f9f3e8;
+    --ink: #171511;
+    --ink-2: #2e2a23;
+    --muted: #665f52;
+    --line: #d9cdb7;
+    --line-dark: rgba(246, 241, 230, 0.16);
+    --red: #a13a32;
+    --red-2: #7f2722;
+    --green: #356555;
+    --blue: #26324a;
+    --gold: #a9702d;
+    --shadow: 0 24px 70px rgba(35, 28, 19, 0.14);
+    --sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --serif: "Cormorant Garamond", Georgia, serif;
+    --mono: "SF Mono", "Menlo", "Consolas", monospace;
+    --max: 1180px;
+    --radius: 8px;
   }
 
-  *, *::before, *::after { box-sizing: border-box; }
+  * {
+    box-sizing: border-box;
+  }
 
-  html { scroll-behavior: smooth; }
+  html {
+    scroll-behavior: smooth;
+  }
 
   body {
     margin: 0;
-    background: var(--paper);
+    background:
+      linear-gradient(180deg, rgba(38, 50, 74, 0.04), transparent 360px),
+      var(--paper);
     color: var(--ink);
-    font-family: var(--serif);
-    font-weight: 400;
+    font-family: var(--sans);
     line-height: 1.55;
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    /* Rice paper texture */
-    background-image:
-      radial-gradient(ellipse at 20% 10%, rgba(168, 51, 42, 0.025), transparent 50%),
-      radial-gradient(ellipse at 80% 90%, rgba(20, 17, 13, 0.04), transparent 50%),
-      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='5'/><feColorMatrix values='0 0 0 0 0.08 0 0 0 0 0.07 0 0 0 0 0.05 0 0 0 0.07 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-    background-attachment: fixed;
   }
 
-  ::selection { background: var(--ink); color: var(--paper); }
-
-  /* ---------- Floating ambient layer ---------- */
-  .ambient {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 1;
-    overflow: hidden;
+  ::selection {
+    background: var(--ink);
+    color: var(--paper);
   }
-  .ambient .glyph {
+
+  a {
+    color: inherit;
+  }
+
+  button,
+  input {
+    font: inherit;
+  }
+
+  img,
+  svg {
+    display: block;
+  }
+
+  .skip-link {
     position: absolute;
-    font-family: var(--display);
-    color: rgba(20, 17, 13, 0.04);
-    font-size: clamp(120px, 18vw, 240px);
-    line-height: 1;
-    user-select: none;
-    transform: translate3d(0,0,0);
+    left: 16px;
+    top: 12px;
+    z-index: 200;
+    transform: translateY(-140%);
+    background: var(--ink);
+    color: var(--paper);
+    padding: 10px 14px;
+    border-radius: 6px;
+    text-decoration: none;
   }
 
-  /* Misty mountains in distance */
-  .mist {
-    position: fixed;
-    left: 0; right: 0; bottom: 0;
-    width: 100vw;
-    height: clamp(220px, 32vh, 380px);
-    pointer-events: none;
-    z-index: 0;
-    opacity: 0.65;
-    /* Image is 3.09:1 (wide) with mountains in upper portion.
-       Cover-crop with top alignment keeps mountain peaks visible while the
-       transparent wash at the bottom of the image reaches the viewport edge. */
-    object-fit: cover;
-    object-position: top center;
-    /* Multiply preserves the ink-on-paper feel where the image has color */
-    mix-blend-mode: multiply;
-    user-select: none;
+  .skip-link:focus {
+    transform: translateY(0);
   }
 
-  /* ---------- Brush trail canvas ---------- */
-  #brushCanvas {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 9999;
-    mix-blend-mode: multiply;
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom: 1px solid rgba(217, 205, 183, 0.72);
+    background: rgba(246, 241, 230, 0.88);
+    backdrop-filter: blur(16px);
   }
-  @media (hover: none) { #brushCanvas { display: none; } }
 
-  /* ---------- Navigation ---------- */
-  nav.top {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    padding: 22px clamp(20px, 5vw, 60px);
+  .nav {
+    max-width: var(--max);
+    margin: 0 auto;
+    min-height: 74px;
+    padding: 0 28px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    z-index: 100;
-    backdrop-filter: blur(8px);
-    background: rgba(241, 234, 216, 0.55);
-    border-bottom: 1px solid transparent;
-    transition: border-color 0.4s ease, background 0.4s ease;
+    gap: 22px;
   }
-  nav.top.scrolled {
-    border-bottom-color: var(--rule);
-    background: rgba(241, 234, 216, 0.78);
-  }
-  nav.top .brand {
-    display: flex;
+
+  .brand {
+    display: inline-flex;
     align-items: center;
-    gap: 12px;
-    font-family: var(--serif);
-    font-weight: 500;
-    font-size: 22px;
-    letter-spacing: 0.02em;
+    gap: 14px;
     color: var(--ink);
     text-decoration: none;
   }
-  nav.top .brand .seal {
-    width: 32px; height: 32px;
-    flex-shrink: 0;
+
+  .brand-mark {
+    width: 48px;
+    height: 48px;
+    flex: 0 0 48px;
+    object-fit: cover;
+    object-position: center;
+    mix-blend-mode: multiply;
+    transform: rotate(-5deg);
   }
-  nav.top .links {
+
+  .brand-word {
+    font-family: var(--serif);
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 0.9;
+    letter-spacing: 0;
+  }
+
+  .brand-word .word-accent {
+    color: var(--ink-2);
+  }
+
+  .nav-links {
     display: flex;
-    gap: clamp(20px, 3vw, 44px);
     align-items: center;
-    font-family: var(--sans);
+    gap: 26px;
+    color: var(--muted);
     font-size: 14px;
-    font-weight: 400;
-    letter-spacing: 0.04em;
-  }
-  nav.top .links a {
-    color: var(--ink-soft);
-    text-decoration: none;
-    position: relative;
-    padding: 4px 0;
-    transition: color 0.25s ease;
-  }
-  nav.top .links a:hover { color: var(--ink); }
-  nav.top .links a:not(.cta)::after {
-    content: '';
-    position: absolute;
-    left: 0; bottom: 0;
-    height: 1px; width: 0;
-    background: var(--ink);
-    transition: width 0.3s ease;
-  }
-  nav.top .links a:not(.cta):hover::after { width: 100%; }
-  @media (max-width: 720px) {
-    nav.top .links a:not(.cta) { display: none; }
+    font-weight: 600;
   }
 
-  .cta {
-    display: inline-block;
-    padding: 11px 24px;
-    background: var(--ink);
-    color: var(--paper) !important;
+  .nav-links a {
+    text-decoration: none;
+  }
+
+  .nav-links a:hover {
+    color: var(--ink);
+  }
+
+  .button {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 0 18px;
     border: 1px solid var(--ink);
-    border-radius: 0;
-    font-family: var(--sans);
-    font-size: 13px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    border-radius: 8px;
+    background: var(--ink);
+    color: var(--paper);
+    text-decoration: none;
+    font-weight: 700;
     cursor: pointer;
-    text-decoration: none;
-    transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
-  }
-  .cta span { display: inline-block; }
-  .cta:hover {
-    background: var(--vermilion);
-    border-color: var(--vermilion);
-  }
-  .cta.ghost {
-    background: transparent;
-    color: var(--ink) !important;
-    border: 1px solid var(--ink);
-  }
-  .cta.ghost:hover {
-    background: var(--ink);
-    color: var(--paper) !important;
-    border-color: var(--ink);
+    transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease, color 160ms ease;
   }
 
-  /* ---------- Layout ---------- */
-  main { position: relative; z-index: 2; }
+  .button:hover {
+    transform: translateY(-1px);
+    background: var(--red);
+    border-color: var(--red);
+  }
+
+  .button.secondary {
+    background: transparent;
+    color: var(--ink);
+  }
+
+  .button.secondary:hover {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--paper);
+  }
+
+  .button.light {
+    background: var(--paper);
+    border-color: var(--paper);
+    color: var(--ink);
+  }
+
+  .button.light:hover {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: var(--ink);
+  }
+
+  main {
+    overflow: hidden;
+  }
+
   section {
     position: relative;
-    padding: clamp(80px, 12vh, 160px) clamp(20px, 5vw, 60px);
+    padding: 96px 28px;
   }
+
   .container {
-    max-width: var(--maxw);
+    max-width: var(--max);
     margin: 0 auto;
   }
 
-  .eyebrow {
-    font-family: var(--sans);
-    font-size: 11px;
-    letter-spacing: 0.4em;
-    text-transform: uppercase;
-    color: var(--ink-mute);
-    margin-bottom: 28px;
-    display: inline-flex;
-    align-items: center;
-    gap: 14px;
-  }
-  .eyebrow::before {
-    content: '';
-    width: 28px; height: 1px;
-    background: var(--ink-mute);
+  .section-head {
+    max-width: 730px;
+    margin-bottom: 42px;
   }
 
-  /* ---------- Hero ---------- */
-  .hero {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding-top: 140px;
-    padding-bottom: 100px;
-    position: relative;
-  }
-  .hero-inner {
-    text-align: center;
-    max-width: 980px;
-    margin: 0 auto;
-    position: relative;
-    z-index: 3;
-  }
-  .hero .enso-bg {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    /* Constrained by both viewport dimensions so it always fits */
-    width: min(880px, 85vh, 92vw);
-    height: min(880px, 85vh, 92vw);
-    z-index: 1;
-    opacity: 0;
-    animation: ensoFadeIn 2.4s ease-out 0.4s forwards;
-    pointer-events: none;
-  }
-  @keyframes ensoFadeIn { to { opacity: 0.6; } }
-  @media (max-width: 720px) {
-    .hero .enso-bg {
-      width: min(560px, 70vh, 96vw);
-      height: min(560px, 70vh, 96vw);
-    }
-  }
-
-  .hero h1 {
-    font-family: var(--serif);
-    font-weight: 500;
-    font-size: clamp(60px, 11.5vw, 156px);
-    line-height: 0.92;
-    letter-spacing: -0.025em;
-    margin: 0 0 28px;
-    color: var(--ink);
-    position: relative;
-    z-index: 3;
-  }
-
-
-  .hero .lede {
-    font-family: var(--serif);
-    font-size: clamp(19px, 2vw, 24px);
-    font-style: italic;
-    color: var(--ink-soft);
-    /* Constrained so it stays inside the brush-clear interior of the enso on every viewport */
-    max-width: min(500px, 78%);
-    margin: 0 auto 56px;
-    line-height: 1.55;
-    opacity: 0;
-    animation: fadeUp 1.4s ease-out 1.4s forwards;
-    text-wrap: balance;
-  }
-
-  .hero .actions {
-    display: flex;
-    gap: 16px;
-    justify-content: center;
-    flex-wrap: wrap;
-    opacity: 0;
-    animation: fadeUp 1.4s ease-out 1.7s forwards;
-  }
-  .hero .actions .cta {
-    padding: 14px 32px;
+  .kicker {
+    margin: 0 0 12px;
+    color: var(--red);
     font-size: 13px;
+    font-weight: 800;
+    text-transform: uppercase;
   }
 
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+  h1,
+  h2,
+  h3,
+  p {
+    margin-top: 0;
   }
 
-  /* Brush stroke under "EvalMonk" */
-  .brush-underline {
-    display: block;
-    margin: 0 auto;
-    width: min(420px, 70%);
-    height: 22px;
-    overflow: visible;
-  }
-  .brush-underline path {
-    fill: none;
-    stroke: var(--ink);
-    stroke-width: 5;
-    stroke-linecap: round;
-    stroke-dasharray: 600;
-    stroke-dashoffset: 600;
-    animation: brushDraw 2s cubic-bezier(.6,.05,.3,.95) 0.6s forwards;
-  }
-  @keyframes brushDraw { to { stroke-dashoffset: 0; } }
-
-
-  /* ---------- Section divider — brush stroke ---------- */
-  .divider {
-    width: 100%;
-    max-width: 320px;
-    margin: 0 auto;
-    height: 18px;
-    overflow: visible;
-  }
-  .divider path {
-    fill: var(--ink);
-    opacity: 0.85;
-  }
-
-  /* ---------- Three Pillars ---------- */
-  .pillars {
-    background: linear-gradient(180deg, transparent 0%, var(--paper-warm) 30%, var(--paper-warm) 70%, transparent 100%);
-  }
-  .pillars .container { text-align: center; }
-  .section-title {
-    font-family: var(--serif);
-    font-weight: 500;
-    font-size: clamp(36px, 5vw, 60px);
-    line-height: 1.1;
-    letter-spacing: -0.01em;
-    margin: 0 0 18px;
+  h1,
+  h2,
+  h3 {
     color: var(--ink);
   }
-  .section-sub {
+
+  h1,
+  h2 {
     font-family: var(--serif);
-    font-style: italic;
-    font-size: clamp(18px, 1.6vw, 21px);
-    color: var(--ink-mute);
-    max-width: 620px;
-    margin: 0 auto 80px;
-    line-height: 1.5;
+    font-weight: 700;
+    line-height: 0.96;
   }
 
-  .pillar-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: clamp(24px, 4vw, 60px);
-    text-align: left;
-    margin-top: 60px;
-  }
-  @media (max-width: 820px) {
-    .pillar-grid { grid-template-columns: 1fr; gap: 50px; }
-  }
-
-  .pillar {
-    position: relative;
-    padding: 40px 32px 36px;
-    background: var(--paper);
-    border: 1px solid var(--rule);
-    transition: transform 0.5s cubic-bezier(.2,.7,.2,1), box-shadow 0.5s ease;
-    overflow: hidden;
-  }
-  .pillar::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: radial-gradient(circle at 80% 0%, rgba(20,17,13,0.04), transparent 60%);
-    pointer-events: none;
-  }
-  .pillar:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 24px 60px -30px rgba(20,17,13,0.35);
-  }
-  .pillar > * { position: relative; z-index: 1; }
-  .pillar .pillar-watermark {
-    position: absolute;
-    top: -30px; right: -20px;
-    font-family: var(--display);
-    font-size: 220px;
-    line-height: 1;
-    color: rgba(20,17,13,0.045);
-    pointer-events: none;
-    z-index: 0;
-    user-select: none;
-  }
-  .pillar .pillar-num {
-    font-family: var(--sans);
-    font-size: 11px;
-    letter-spacing: 0.32em;
-    text-transform: uppercase;
-    color: var(--vermilion);
+  h1 {
     margin-bottom: 22px;
-  }
-  .pillar h3 {
-    font-family: var(--serif);
-    font-weight: 500;
-    font-size: 26px;
-    line-height: 1.2;
-    margin: 0 0 14px;
-    letter-spacing: -0.01em;
-    color: var(--ink);
-  }
-  .pillar p {
-    font-family: var(--sans);
-    font-size: 15px;
-    line-height: 1.7;
-    color: var(--ink-soft);
-    margin: 0;
+    font-size: 96px;
   }
 
-  /* ---------- Problem section ---------- */
-  .problem {
-    text-align: center;
+  h2 {
+    margin-bottom: 18px;
+    font-size: 58px;
   }
-  .problem-quote {
-    font-family: var(--serif);
-    font-style: italic;
-    font-weight: 400;
-    font-size: clamp(28px, 4.5vw, 52px);
-    line-height: 1.3;
-    color: var(--ink);
+
+  h3 {
+    margin-bottom: 10px;
+    font-size: 22px;
+    line-height: 1.18;
+  }
+
+  .lead {
+    color: var(--ink-2);
+    font-size: 21px;
+    line-height: 1.55;
+  }
+
+  .muted {
+    color: var(--muted);
+  }
+
+  .hero {
+    min-height: calc(100svh - 74px);
+    padding-top: 72px;
+    padding-bottom: 52px;
+    display: grid;
+    align-items: center;
+  }
+
+  .hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(90deg, rgba(161, 58, 50, 0.07), transparent 34%),
+      linear-gradient(180deg, rgba(255, 250, 241, 0.65), rgba(246, 241, 230, 0));
+    pointer-events: none;
+  }
+
+  .hero-layout {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    gap: 38px;
+  }
+
+  .hero-copy {
     max-width: 920px;
-    margin: 0 auto 60px;
-    position: relative;
-  }
-  .problem-quote::before {
-    content: '"';
-    position: absolute;
-    top: -50px; left: 50%;
-    transform: translateX(-50%);
-    font-family: var(--display);
-    font-size: 120px;
-    color: var(--vermilion);
-    opacity: 0.25;
-    line-height: 1;
   }
 
-  .problem-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 40px;
-    margin-top: 60px;
-    text-align: left;
-  }
-  @media (max-width: 820px) {
-    .problem-grid { grid-template-columns: 1fr; }
-  }
-  .problem-card {
-    padding: 28px 0;
-    border-top: 1px solid var(--ink);
-  }
-  .problem-card .num {
-    font-family: var(--display);
-    font-size: 20px;
-    color: var(--vermilion);
-    margin-bottom: 12px;
-  }
-  .problem-card h4 {
-    font-family: var(--serif);
-    font-weight: 600;
-    font-size: 22px;
-    margin: 0 0 10px;
-    color: var(--ink);
-  }
-  .problem-card p {
-    font-family: var(--sans);
-    font-size: 14px;
-    line-height: 1.7;
-    color: var(--ink-soft);
-    margin: 0;
+  .hero-copy .lead {
+    max-width: 720px;
+    margin-bottom: 28px;
   }
 
-  /* ---------- Capabilities (the practice) ---------- */
-  .practice {
-    background: var(--paper-deep);
-    position: relative;
-    overflow: hidden;
-  }
-  /* Center the section header (eyebrow + title + sub) to match Pillars/Agent sections */
-  .practice > .container > .reveal:first-child,
-  .path > .container > .reveal:first-child {
-    text-align: center;
-  }
-  .practice > .container > .reveal:first-child .eyebrow,
-  .path > .container > .reveal:first-child .eyebrow {
-    justify-content: center;
-  }
-  .practice::before {
-    content: '觀';
-    position: absolute;
-    top: -40px; right: -40px;
-    font-family: var(--display);
-    font-size: clamp(240px, 32vw, 480px);
-    line-height: 1;
-    color: rgba(20,17,13,0.04);
-    pointer-events: none;
-  }
-
-  .feature-rows { display: flex; flex-direction: column; gap: 80px; margin-top: 80px; }
-  .feature-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 60px;
-    align-items: center;
-  }
-  .feature-row.reverse { direction: rtl; }
-  .feature-row.reverse > * { direction: ltr; }
-  @media (max-width: 820px) {
-    .feature-row { grid-template-columns: 1fr; gap: 30px; direction: ltr; }
-  }
-  .feature-text .marker {
-    font-family: var(--display);
-    font-size: 14px;
-    color: var(--vermilion);
-    letter-spacing: 0.2em;
-    margin-bottom: 16px;
-  }
-  .feature-text h3 {
-    font-family: var(--serif);
-    font-weight: 500;
-    font-size: clamp(28px, 3.5vw, 40px);
-    line-height: 1.15;
-    margin: 0 0 18px;
-    color: var(--ink);
-  }
-  .feature-text p {
-    font-family: var(--sans);
-    font-size: 16px;
-    line-height: 1.75;
-    color: var(--ink-soft);
-    margin: 0 0 18px;
-  }
-  .feature-text ul {
-    list-style: none;
-    padding: 0; margin: 0;
-    font-family: var(--sans);
-    font-size: 14px;
-    color: var(--ink-soft);
-  }
-  .feature-text ul li {
-    padding: 8px 0 8px 22px;
-    position: relative;
-    border-bottom: 1px dashed var(--rule);
-  }
-  .feature-text ul li:last-child { border-bottom: none; }
-  .feature-text ul li::before {
-    content: '◦';
-    position: absolute;
-    left: 0; top: 8px;
-    color: var(--vermilion);
-    font-size: 14px;
-  }
-
-  .feature-visual {
-    aspect-ratio: 4/3;
-    background: var(--paper);
-    border: 1px solid var(--rule);
-    position: relative;
-    overflow: hidden;
-    box-shadow: 0 30px 60px -40px rgba(20,17,13,0.3);
-  }
-  .feature-visual .vis-label {
-    position: absolute;
-    top: 14px; left: 18px;
-    font-family: var(--sans);
-    font-size: 10px;
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    color: var(--ink-mute);
-    z-index: 2;
-  }
-  .feature-visual .vis-stamp {
-    position: absolute;
-    bottom: 14px; right: 18px;
-    width: 38px; height: 38px;
-    border: 1.5px solid var(--vermilion);
-    color: var(--vermilion);
-    font-family: var(--display);
-    font-size: 22px;
+  .hero-actions {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 3px;
-    opacity: 0.85;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 28px;
   }
 
-  /* ----- Static product mockups ----- */
-
-  /* Observe — trace tree */
-  .vis-trace {
-    position: absolute;
-    inset: 46px 22px 22px 22px;
-    font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Menlo', monospace;
-    font-size: 11.5px;
-    line-height: 1.85;
-    color: var(--ink-soft);
-  }
-  .vis-trace .tr {
-    display: grid;
-    grid-template-columns: 14px 1fr auto;
+  .hero-proof {
+    display: flex;
+    flex-wrap: wrap;
     gap: 10px;
-    align-items: center;
-    padding: 1px 0;
-  }
-  .vis-trace .tr.d1 { padding-left: 16px; }
-  .vis-trace .tr.d2 { padding-left: 32px; }
-  .vis-trace .tr .ico {
-    font-family: var(--sans);
-    color: var(--ink-mute);
-    font-size: 10px;
-    text-align: center;
-  }
-  .vis-trace .tr.root { color: var(--ink); }
-  .vis-trace .tr.root .ico { color: var(--vermilion); }
-  .vis-trace .tr .t-time {
-    font-size: 10.5px;
-    color: var(--ink-mute);
-    font-variant-numeric: tabular-nums;
-  }
-  .vis-trace .tr.warn .t-time { color: var(--vermilion); }
-  .vis-trace .tr-totals {
-    margin-top: 14px;
-    padding-top: 10px;
-    border-top: 1px solid var(--rule);
-    font-family: var(--sans);
-    font-size: 10px;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--ink-mute);
-    display: flex;
-    gap: 14px;
-  }
-  .vis-trace .tr-totals strong {
-    font-weight: 500;
-    color: var(--ink);
-    letter-spacing: 0.08em;
+    padding: 0;
+    margin: 0;
+    list-style: none;
   }
 
-  /* Evaluate — rubric scorecard (static) */
-  .vis-eval {
-    position: absolute;
-    inset: 50px 24px 24px 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 13px;
-    justify-content: center;
-  }
-  .vis-eval .er {
-    display: grid;
-    grid-template-columns: 120px 1fr 38px;
-    align-items: center;
-    gap: 14px;
-    font-family: var(--sans);
-    font-size: 11.5px;
-    color: var(--ink-soft);
-  }
-  .vis-eval .bar {
-    height: 6px;
-    background: rgba(20,17,13,0.08);
-    position: relative;
-    overflow: hidden;
-  }
-  .vis-eval .bar > i {
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
-    background: var(--ink);
-    display: block;
-  }
-  .vis-eval .er.fail .bar > i { background: var(--vermilion); }
-  .vis-eval .score {
-    font-family: 'SF Mono', monospace;
-    font-size: 12px;
-    text-align: right;
-    color: var(--ink);
-    font-variant-numeric: tabular-nums;
-  }
-  .vis-eval .er.fail .score { color: var(--vermilion); }
-  .vis-eval .er-foot {
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid var(--rule);
-    font-family: var(--sans);
-    font-size: 10px;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--ink-mute);
-    display: flex;
-    justify-content: space-between;
-  }
-  .vis-eval .er-foot .flag { color: var(--vermilion); }
-
-  /* Guard — blocked attacks log */
-  .vis-block {
-    position: absolute;
-    inset: 50px 24px 24px 24px;
-    font-family: 'SF Mono', 'JetBrains Mono', monospace;
-    font-size: 11.5px;
-  }
-  .vis-block .gh {
-    display: grid;
-    grid-template-columns: 1fr 70px 60px;
-    gap: 12px;
-    font-family: var(--sans);
-    font-size: 9.5px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--ink-mute);
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--rule);
-    margin-bottom: 4px;
-  }
-  .vis-block .gh > span:nth-child(2),
-  .vis-block .gh > span:nth-child(3) { text-align: right; }
-  .vis-block .gr {
-    display: grid;
-    grid-template-columns: 1fr 70px 60px;
-    gap: 12px;
-    align-items: center;
-    padding: 5px 0;
-    color: var(--ink-soft);
-  }
-  .vis-block .gr .cat { color: var(--ink); }
-  .vis-block .gr .act {
-    font-family: var(--sans);
-    font-size: 9.5px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--vermilion);
-    text-align: right;
-  }
-  .vis-block .gr .ct {
-    text-align: right;
-    color: var(--ink);
-    font-variant-numeric: tabular-nums;
-  }
-  .vis-block .gtotal {
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid var(--ink);
-    display: grid;
-    grid-template-columns: 1fr 60px;
-    font-family: var(--sans);
-    font-size: 10px;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--ink);
-  }
-  .vis-block .gtotal strong {
-    text-align: right;
-    font-family: 'SF Mono', monospace;
-    font-weight: 500;
-    letter-spacing: 0;
-    font-variant-numeric: tabular-nums;
-    color: var(--ink);
-  }
-
-  /* ---------- Agent onboarding ---------- */
-  .agent-onboard {
-    background: var(--paper);
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-  }
-  .agent-onboard::before {
-    content: '智';
-    position: absolute;
-    bottom: -120px; right: -60px;
-    font-family: var(--display);
-    font-size: clamp(280px, 36vw, 540px);
-    line-height: 1;
-    color: rgba(20,17,13,0.035);
-    pointer-events: none;
-  }
-  .agent-onboard .container { max-width: 920px; position: relative; z-index: 1; }
-  .agent-onboard .eyebrow { justify-content: center; }
-
-  .agent-prompt {
-    margin: 56px auto 64px;
-    background: #0d0a06;
-    color: var(--paper);
-    border: 1px solid rgba(20,17,13,0.25);
-    text-align: left;
-    border-radius: 4px;
-    overflow: hidden;
-    box-shadow: 0 40px 80px -40px rgba(20,17,13,0.5);
-    max-width: 760px;
-    position: relative;
-  }
-  .agent-prompt::before {
-    content: '';
-    position: absolute;
-    top: -1px; left: 24px;
-    width: 60px; height: 3px;
-    background: var(--vermilion);
-  }
-  .prompt-label {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 22px;
-    border-bottom: 1px solid rgba(241,234,216,0.08);
-    font-family: var(--sans);
-    font-size: 11px;
-    letter-spacing: 0.28em;
-    text-transform: uppercase;
-    color: rgba(241,234,216,0.55);
-  }
-  .copy-btn {
+  .hero-proof li {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    background: transparent;
-    border: 1px solid rgba(241,234,216,0.22);
-    color: rgba(241,234,216,0.75);
-    padding: 7px 14px;
-    font-family: var(--sans);
-    font-size: 11px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-    border-radius: 2px;
-  }
-  .copy-btn:hover {
-    background: rgba(241,234,216,0.08);
-    color: var(--paper);
-    border-color: rgba(241,234,216,0.45);
-  }
-  .copy-btn svg { display: block; opacity: 0.85; }
-  .prompt-body {
-    padding: 32px 28px 36px;
-    font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Menlo', monospace;
-    font-size: 15px;
-    line-height: 1.75;
-    color: rgba(241,234,216,0.95);
-    word-break: break-word;
-  }
-  .prompt-body .url { color: #c9a86a; }
-  .prompt-body .verb { color: #87b87b; }
-
-  .agent-steps {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 36px;
-    text-align: left;
-    margin-bottom: 52px;
-  }
-  @media (max-width: 760px) {
-    .agent-steps { grid-template-columns: 1fr; gap: 28px; }
-  }
-  .agent-step {
-    position: relative;
-    padding-top: 28px;
-  }
-  .agent-step::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0;
-    width: 32px; height: 1px;
-    background: var(--ink);
-  }
-  .agent-step .step-mark {
-    font-family: var(--sans);
-    font-size: 11px;
-    letter-spacing: 0.32em;
-    text-transform: uppercase;
-    color: var(--vermilion);
-    margin-bottom: 12px;
-  }
-  .agent-step h4 {
-    font-family: var(--serif);
-    font-weight: 600;
-    font-size: 20px;
-    line-height: 1.3;
-    margin: 0 0 10px;
-    color: var(--ink);
-  }
-  .agent-step p {
-    font-family: var(--sans);
-    font-size: 14px;
-    line-height: 1.7;
-    color: var(--ink-soft);
-    margin: 0;
-  }
-  .agent-step code {
-    font-family: 'SF Mono', 'JetBrains Mono', monospace;
-    font-size: 12.5px;
-    background: rgba(20,17,13,0.06);
-    padding: 1px 5px;
-    border-radius: 2px;
-    color: var(--ink);
-  }
-
-  .agent-frameworks {
-    padding: 32px 0 0;
-    border-top: 1px solid var(--rule);
-    font-family: var(--sans);
+    min-height: 34px;
+    padding: 0 12px;
+    border: 1px solid rgba(102, 95, 82, 0.25);
+    border-radius: 999px;
+    background: rgba(255, 250, 241, 0.76);
+    color: var(--muted);
     font-size: 13px;
-    color: var(--ink-mute);
-    text-align: center;
-    line-height: 2;
+    font-weight: 700;
   }
-  .agent-frameworks .fw-label {
-    display: inline-block;
-    font-size: 10px;
-    letter-spacing: 0.34em;
-    text-transform: uppercase;
-    color: var(--ink-mute);
-    margin-right: 18px;
-    vertical-align: middle;
-  }
-  .agent-frameworks .fw {
-    display: inline-block;
-    padding: 4px 12px;
-    margin: 4px 3px;
-    border: 1px solid var(--rule);
-    color: var(--ink-soft);
-    transition: border-color 0.2s ease, color 0.2s ease;
-  }
-  .agent-frameworks .fw:hover { border-color: var(--ink); color: var(--ink); }
 
-  /* ---------- Path / How it works ---------- */
-  .path { background: var(--paper-warm); }
-  .path-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr;
-    gap: 32px;
-    margin-top: 80px;
-    position: relative;
-  }
-  @media (max-width: 980px) {
-    .path-grid { grid-template-columns: 1fr 1fr; }
-  }
-  @media (max-width: 560px) {
-    .path-grid { grid-template-columns: 1fr; }
-  }
-  .path-step {
-    position: relative;
-    padding-top: 50px;
-  }
-  .path-step .step-num {
+  .hero-art {
     position: absolute;
-    top: 0; left: 0;
-    font-family: var(--serif);
-    font-weight: 500;
-    font-size: 28px;
-    color: var(--vermilion);
-    line-height: 1;
-    letter-spacing: 0.02em;
-  }
-  .path-step .step-num::after {
-    content: '';
-    display: block;
-    width: 32px; height: 1px;
-    background: var(--ink);
-    margin-top: 14px;
-  }
-  .path-step code {
-    font-family: 'SF Mono', 'JetBrains Mono', monospace;
-    font-size: 12.5px;
-    background: rgba(20,17,13,0.06);
-    padding: 1px 5px;
-    border-radius: 2px;
-    color: var(--ink);
-  }
-  .path-step h4 {
-    font-family: var(--serif);
-    font-weight: 600;
-    font-size: 22px;
-    margin: 12px 0 10px;
-    color: var(--ink);
-  }
-  .path-step p {
-    font-family: var(--sans);
-    font-size: 14px;
-    line-height: 1.7;
-    color: var(--ink-soft);
-    margin: 0;
-  }
-
-  /* ---------- Code / log preview ---------- */
-  .preview {
-    background: var(--ink);
-    color: var(--paper);
-    padding: clamp(80px, 12vh, 140px) clamp(20px, 5vw, 60px);
-    position: relative;
-    overflow: hidden;
-  }
-  .preview::before {
-    content: '評';
-    position: absolute;
-    bottom: -100px; left: -50px;
-    font-family: var(--display);
-    font-size: clamp(300px, 38vw, 600px);
-    line-height: 1;
-    color: rgba(241,234,216,0.03);
-    pointer-events: none;
-  }
-  .preview .container {
-    display: grid;
-    grid-template-columns: 5fr 7fr;
-    gap: 60px;
-    align-items: center;
-  }
-  @media (max-width: 820px) {
-    .preview .container { grid-template-columns: 1fr; }
-  }
-  .preview .eyebrow { color: rgba(241,234,216,0.6); }
-  .preview .eyebrow::before { background: rgba(241,234,216,0.6); }
-  .preview h2 {
-    font-family: var(--serif);
-    font-weight: 500;
-    font-size: clamp(32px, 4vw, 48px);
-    line-height: 1.15;
-    margin: 0 0 20px;
-    color: var(--paper);
-  }
-  .preview p {
-    font-family: var(--sans);
-    font-size: 15px;
-    line-height: 1.75;
-    color: rgba(241,234,216,0.7);
-    margin: 0 0 28px;
-  }
-  .preview .cta {
-    background: var(--paper);
-    color: var(--ink) !important;
-    border: 1px solid var(--paper);
-  }
-  .preview .cta::before { background: var(--vermilion); }
-  .preview .cta:hover { color: var(--paper) !important; }
-
-  .terminal {
-    background: #0d0a06;
-    border: 1px solid rgba(241,234,216,0.12);
-    border-radius: 4px;
-    overflow: hidden;
-    font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Menlo', monospace;
-    font-size: 13px;
-    line-height: 1.7;
-    box-shadow: 0 40px 80px -40px rgba(0,0,0,0.5);
-  }
-  .terminal-header {
-    display: flex;
-    gap: 8px;
-    padding: 12px 16px;
-    border-bottom: 1px solid rgba(241,234,216,0.1);
-    align-items: center;
-  }
-  .terminal-header .dot {
-    width: 10px; height: 10px; border-radius: 50%;
-    background: rgba(241,234,216,0.2);
-  }
-  .terminal-header .title {
-    margin-left: 12px;
-    font-family: var(--sans);
-    font-size: 11px;
-    color: rgba(241,234,216,0.5);
-    letter-spacing: 0.1em;
-  }
-  .terminal-body {
-    padding: 24px 28px;
-    color: rgba(241,234,216,0.85);
-    min-height: 320px;
-    position: relative;
-  }
-  .terminal-body .ln { display: block; }
-  .terminal-body .c-key { color: #c9a86a; }
-  .terminal-body .c-str { color: #a8c084; }
-  .terminal-body .c-num { color: #d97a6c; }
-  .terminal-body .c-mute { color: rgba(241,234,216,0.4); }
-  .terminal-body .c-warn { color: #d97a6c; }
-  .terminal-body .c-ok { color: #87b87b; }
-  .terminal-body .cursor-blink {
-    display: inline-block;
-    width: 7px; height: 14px;
-    background: var(--paper);
-    margin-left: 2px;
-    vertical-align: middle;
-    animation: blink 1s steps(2) infinite;
-  }
-  @keyframes blink { 50% { opacity: 0; } }
-
-  /* ---------- Quote / Philosophy ---------- */
-  .philosophy {
-    text-align: center;
-    padding: clamp(140px, 20vh, 220px) clamp(20px, 5vw, 60px);
-    position: relative;
-    overflow: hidden;
-  }
-  .philosophy > .container { position: relative; z-index: 2; }
-
-  /* Crane decoration on the right side of the principle section.
-     Image aspect is ~0.64:1 (taller than wide). */
-  .philosophy-crane {
-    position: absolute;
-    right: max(3vw, 32px);
-    top: 50%;
-    transform: translateY(-50%);
-    height: 78%;
-    max-height: 520px;
-    width: auto;
-    pointer-events: none;
-    opacity: 0.62;
-    z-index: 1;
-    user-select: none;
-    object-fit: contain;
+    right: -86px;
+    top: 24px;
+    width: min(661px, 54%);
+    height: auto;
+    opacity: 0.14;
     mix-blend-mode: multiply;
-  }
-  @media (max-width: 1100px) {
-    .philosophy-crane {
-      right: 0;
-      transform: translate(18%, -50%);
-      opacity: 0.4;
-      max-height: 380px;
-    }
-  }
-  @media (max-width: 720px) {
-    .philosophy-crane { display: none; }
-  }
-  .philosophy .enso-spinner {
-    margin: 0 auto 60px;
-    width: 140px; height: 140px;
-  }
-  .philosophy .enso-spinner svg {
-    width: 100%; height: 100%;
-  }
-  .philosophy .enso-spinner circle {
-    fill: none;
-    stroke: var(--ink);
-    stroke-width: 4;
-    stroke-linecap: round;
-    stroke-dasharray: 380 60;
-    transform-origin: 50% 50%;
-    transform: rotate(-30deg);
-  }
-  .philosophy .quote {
-    font-family: var(--serif);
-    font-weight: 400;
-    font-style: italic;
-    font-size: clamp(28px, 4.4vw, 52px);
-    line-height: 1.3;
-    color: var(--ink);
-    max-width: 920px;
-    margin: 0 auto 32px;
-    letter-spacing: -0.005em;
-  }
-  .philosophy .attribution {
-    font-family: var(--sans);
-    font-size: 13px;
-    color: var(--ink-mute);
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-  }
-
-  /* ---------- CTA / Begin ---------- */
-  .begin {
-    background: var(--paper-deep);
-    text-align: center;
-    padding: clamp(100px, 16vh, 180px) clamp(20px, 5vw, 60px);
-    position: relative;
-    overflow: hidden;
-  }
-  .begin::after {
-    content: '';
-    position: absolute;
-    width: 1px; background: var(--ink-mute);
-    top: 60px; bottom: 60px;
-    right: clamp(20px, 5vw, 60px);
-  }
-  .begin > .container { position: relative; z-index: 2; }
-
-  /* Bamboo decoration on the left side of the Begin section.
-     Image aspect is ~0.84:1 (slightly taller than wide). */
-  .begin-bamboo {
-    position: absolute;
-    left: 0;
-    bottom: 0;
-    height: 100%;
-    width: auto;
-    max-width: 360px;
     pointer-events: none;
-    opacity: 0.6;
-    transform: translateX(-12%);
-    z-index: 1;
-    user-select: none;
-    object-fit: contain;
-    object-position: bottom left;
+  }
+
+  .hero-mountains {
+    position: absolute;
+    right: 24px;
+    bottom: 10px;
+    width: min(458px, 42%);
+    height: auto;
+    opacity: 0.48;
     mix-blend-mode: multiply;
+    pointer-events: none;
   }
-  @media (max-width: 980px) {
-    .begin-bamboo { display: none; }
-  }
-  .begin h2 {
-    font-family: var(--serif);
-    font-weight: 500;
-    font-size: clamp(40px, 6vw, 72px);
-    line-height: 1.1;
-    margin: 0 0 24px;
-    color: var(--ink);
-  }
-  .begin .glyph-mark {
-    font-family: var(--display);
-    font-size: clamp(56px, 8vw, 96px);
-    color: var(--ink);
-    margin-bottom: 30px;
-    line-height: 1;
-  }
-  .begin p {
-    font-family: var(--serif);
-    font-style: italic;
-    font-size: clamp(18px, 1.8vw, 22px);
-    color: var(--ink-soft);
-    max-width: 560px;
-    margin: 0 auto 44px;
-    line-height: 1.6;
-  }
-  .begin-form {
-    display: flex;
-    max-width: 520px;
-    margin: 0 auto;
+
+  .product-board {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
     gap: 0;
-    border-bottom: 1.5px solid var(--ink);
+    overflow: hidden;
+    border: 1px solid rgba(23, 21, 17, 0.16);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow);
   }
-  .begin-form input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    padding: 14px 4px;
-    font-family: var(--serif);
-    font-size: 18px;
-    color: var(--ink);
-    outline: none;
+
+  .board-main,
+  .board-side {
+    min-width: 0;
   }
-  .begin-form input::placeholder { color: var(--ink-mute); font-style: italic; }
-  .begin-form button {
-    background: transparent;
-    border: none;
-    padding: 14px 16px;
+
+  .board-main {
+    border-right: 1px solid var(--line);
+  }
+
+  .board-top {
+    min-height: 58px;
+    padding: 0 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(255, 250, 241, 0.74);
+  }
+
+  .board-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    font-weight: 800;
+  }
+
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 0 4px rgba(53, 101, 85, 0.12);
+  }
+
+  .board-meta {
+    white-space: nowrap;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .trace-list {
+    padding: 18px;
+  }
+
+  .trace-row {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    min-height: 42px;
+    border-bottom: 1px solid rgba(217, 205, 183, 0.76);
+    color: var(--ink-2);
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+
+  .trace-row:last-child {
+    border-bottom: 0;
+  }
+
+  .trace-row.depth-1 {
+    padding-left: 28px;
+  }
+
+  .trace-row.depth-2 {
+    padding-left: 56px;
+  }
+
+  .trace-row strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+  }
+
+  .trace-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: rgba(53, 101, 85, 0.1);
+    color: var(--green);
     font-family: var(--sans);
     font-size: 12px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    cursor: pointer;
-    color: var(--ink);
-    transition: color 0.25s ease;
+    font-weight: 800;
   }
-  .begin-form button:hover { color: var(--vermilion); }
-  .begin-form button::after {
-    content: ' →';
-    display: inline-block;
-    margin-left: 4px;
-  }
-  .begin-or {
-    margin-top: 28px;
-    font-family: var(--sans);
-    font-size: 13px;
-    color: var(--ink-mute);
-    letter-spacing: 0.04em;
-  }
-  .begin-or span { margin-right: 10px; }
-  .begin-or a {
-    color: var(--ink);
-    text-decoration: none;
-    border-bottom: 1px solid var(--ink-mute);
-    padding-bottom: 1px;
-    transition: border-color 0.2s ease, color 0.2s ease;
-  }
-  .begin-or a:hover { color: var(--vermilion); border-color: var(--vermilion); }
 
-  /* ---------- Footer ---------- */
-  footer {
-    padding: 60px clamp(20px, 5vw, 60px) 40px;
-    border-top: 1px solid var(--rule);
-    font-family: var(--sans);
-    font-size: 13px;
-    color: var(--ink-mute);
+  .trace-time {
+    color: var(--muted);
+    font-size: 12px;
+    white-space: nowrap;
   }
-  footer .container {
-    display: flex;
-    justify-content: space-between;
+
+  .board-side {
+    display: grid;
+    grid-template-rows: auto 1fr;
+  }
+
+  .metric-stack {
+    padding: 18px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .metric {
+    min-height: 108px;
+    padding: 14px;
+    border: 1px solid rgba(217, 205, 183, 0.9);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+
+  .metric b {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--ink);
+    font-size: 28px;
+    line-height: 1;
+  }
+
+  .metric span {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .signal-feed {
+    padding: 18px;
+  }
+
+  .signal {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 10px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(217, 205, 183, 0.78);
+  }
+
+  .signal:last-child {
+    border-bottom: 0;
+  }
+
+  .signal-tag {
+    display: inline-flex;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 24px;
-  }
-  footer .brand-mini {
-    display: flex; align-items: center; gap: 12px;
-    font-family: var(--serif);
-    font-size: 18px;
-    color: var(--ink);
-  }
-  footer .brand-mini svg { width: 28px; height: 28px; }
-  footer .links { display: flex; gap: 28px; flex-wrap: wrap; }
-  footer .links a {
-    color: var(--ink-mute);
-    text-decoration: none;
-    transition: color 0.2s ease;
-  }
-  footer .links a:hover { color: var(--ink); }
-  footer .seal-row {
-    display: flex; align-items: center; gap: 14px;
-    font-family: var(--display);
-    font-size: 13px;
-    color: var(--ink-mute);
-  }
-  footer .red-seal {
-    width: 22px; height: 22px;
-    color: var(--vermilion);
-    display: flex; align-items: center; justify-content: center;
+    justify-content: center;
+    width: 74px;
+    height: 26px;
+    border-radius: 999px;
+    color: var(--surface);
+    font-size: 12px;
+    font-weight: 800;
   }
 
-  /* ---------- Reveal animations ---------- */
+  .signal-tag.eval {
+    background: var(--blue);
+  }
+
+  .signal-tag.guard {
+    background: var(--red);
+  }
+
+  .signal-tag.cost {
+    background: var(--gold);
+    color: var(--ink);
+  }
+
+  .signal p {
+    margin: 1px 0 0;
+    color: var(--ink-2);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .section-band {
+    background: var(--surface);
+    border-top: 1px solid rgba(217, 205, 183, 0.75);
+    border-bottom: 1px solid rgba(217, 205, 183, 0.75);
+  }
+
+  .three-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+  }
+
+  .feature-card {
+    min-height: 260px;
+    padding: 24px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--paper);
+  }
+
+  .feature-card .num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    margin-bottom: 22px;
+    border: 1px solid rgba(23, 21, 17, 0.2);
+    border-radius: 8px;
+    color: var(--red);
+    font-weight: 800;
+  }
+
+  .feature-card p {
+    margin-bottom: 0;
+    color: var(--muted);
+    font-size: 15px;
+  }
+
+  .platform-layout {
+    display: grid;
+    grid-template-columns: 0.82fr 1.18fr;
+    gap: 42px;
+    align-items: start;
+  }
+
+  .platform-menu {
+    border-top: 1px solid var(--line);
+  }
+
+  .platform-item {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr);
+    gap: 16px;
+    padding: 22px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .platform-item .mark {
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: var(--ink);
+    color: var(--paper);
+    font-weight: 800;
+  }
+
+  .platform-item:nth-child(2) .mark {
+    background: var(--blue);
+  }
+
+  .platform-item:nth-child(3) .mark {
+    background: var(--red);
+  }
+
+  .platform-item h3 {
+    margin-bottom: 6px;
+  }
+
+  .platform-item p {
+    margin-bottom: 0;
+    color: var(--muted);
+    font-size: 15px;
+  }
+
+  .system-panel {
+    overflow: hidden;
+    border-radius: var(--radius);
+    background: var(--ink);
+    color: var(--paper);
+    box-shadow: var(--shadow);
+  }
+
+  .system-bar {
+    min-height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 0 18px;
+    border-bottom: 1px solid var(--line-dark);
+    color: rgba(246, 241, 230, 0.72);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .system-body {
+    padding: 22px;
+  }
+
+  .run-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1px;
+    overflow: hidden;
+    border-radius: 8px;
+    background: var(--line-dark);
+    border: 1px solid var(--line-dark);
+  }
+
+  .run-cell {
+    min-height: 98px;
+    padding: 14px;
+    background: #211d18;
+  }
+
+  .run-cell strong {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--paper);
+    font-size: 24px;
+  }
+
+  .run-cell span {
+    color: rgba(246, 241, 230, 0.64);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .event-table {
+    width: 100%;
+    margin-top: 20px;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .event-table th,
+  .event-table td {
+    padding: 12px 8px;
+    border-bottom: 1px solid var(--line-dark);
+    text-align: left;
+  }
+
+  .event-table th {
+    color: rgba(246, 241, 230, 0.54);
+    font-size: 12px;
+  }
+
+  .event-table td {
+    color: rgba(246, 241, 230, 0.86);
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 9px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .pill.ok {
+    background: rgba(53, 101, 85, 0.22);
+    color: #acd5c8;
+  }
+
+  .pill.warn {
+    background: rgba(161, 58, 50, 0.22);
+    color: #f0aaa3;
+  }
+
+  .agent-section {
+    background:
+      linear-gradient(180deg, rgba(235, 226, 207, 0.65), rgba(246, 241, 230, 0)),
+      var(--paper);
+  }
+
+  .agent-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 330px;
+    gap: 40px;
+    align-items: center;
+  }
+
+  .prompt-box {
+    overflow: hidden;
+    border-radius: var(--radius);
+    background: #15120f;
+    color: var(--paper);
+    box-shadow: var(--shadow);
+  }
+
+  .prompt-toolbar {
+    min-height: 58px;
+    padding: 0 16px 0 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1px solid var(--line-dark);
+  }
+
+  .prompt-toolbar span {
+    color: rgba(246, 241, 230, 0.62);
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .copy-btn {
+    min-height: 34px;
+    padding: 0 12px;
+    border: 1px solid rgba(246, 241, 230, 0.2);
+    border-radius: 7px;
+    background: transparent;
+    color: var(--paper);
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .copy-btn:hover {
+    border-color: rgba(246, 241, 230, 0.45);
+    background: rgba(246, 241, 230, 0.08);
+  }
+
+  .prompt-body {
+    padding: 24px;
+    color: rgba(246, 241, 230, 0.9);
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.75;
+  }
+
+  .prompt-body strong {
+    color: #f2c17e;
+    font-weight: 600;
+  }
+
+  .agent-side {
+    position: relative;
+    min-height: 420px;
+    display: flex;
+    align-items: end;
+    justify-content: center;
+  }
+
+  .crane-img {
+    width: min(250px, 100%);
+    max-width: 351px;
+    height: auto;
+    mix-blend-mode: multiply;
+  }
+
+  .agent-notes {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+    margin-top: 22px;
+  }
+
+  .note {
+    padding-top: 18px;
+    border-top: 2px solid var(--line);
+  }
+
+  .note b {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--ink);
+  }
+
+  .note p {
+    margin-bottom: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .workflow {
+    background: var(--surface);
+  }
+
+  .workflow-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--line);
+  }
+
+  .workflow-step {
+    min-height: 230px;
+    padding: 24px;
+    background: var(--surface);
+  }
+
+  .workflow-step span {
+    display: inline-flex;
+    margin-bottom: 26px;
+    color: var(--red);
+    font-weight: 800;
+  }
+
+  .workflow-step p {
+    margin-bottom: 0;
+    color: var(--muted);
+    font-size: 15px;
+  }
+
+  .final-cta {
+    padding-bottom: 88px;
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .cta-panel {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 32px;
+    align-items: end;
+    overflow: hidden;
+    padding: 42px;
+    border: 1px solid var(--line-dark);
+    border-radius: var(--radius);
+    background:
+      linear-gradient(135deg, rgba(161, 58, 50, 0.22), transparent 38%),
+      #201c17;
+  }
+
+  .cta-panel h2,
+  .cta-panel p {
+    color: var(--paper);
+  }
+
+  .cta-panel h2 {
+    max-width: 690px;
+  }
+
+  .cta-panel p {
+    max-width: 590px;
+    margin-bottom: 0;
+    color: rgba(246, 241, 230, 0.72);
+  }
+
+  .signup-form {
+    display: flex;
+    width: min(100%, 470px);
+    min-height: 52px;
+    border: 1px solid rgba(246, 241, 230, 0.26);
+    border-radius: 8px;
+    background: rgba(246, 241, 230, 0.06);
+  }
+
+  .signup-form input {
+    min-width: 0;
+    flex: 1;
+    border: 0;
+    outline: 0;
+    padding: 0 16px;
+    background: transparent;
+    color: var(--paper);
+  }
+
+  .signup-form input::placeholder {
+    color: rgba(246, 241, 230, 0.56);
+  }
+
+  .signup-form button {
+    border: 0;
+    border-left: 1px solid rgba(246, 241, 230, 0.2);
+    border-radius: 0 7px 7px 0;
+    background: var(--paper);
+    color: var(--ink);
+    padding: 0 18px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .signup-form button:hover {
+    background: #f0c078;
+  }
+
+  .site-footer {
+    padding: 34px 28px;
+    border-top: 1px solid rgba(246, 241, 230, 0.14);
+    background: var(--ink);
+    color: rgba(246, 241, 230, 0.66);
+  }
+
+  .footer-row {
+    max-width: var(--max);
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    font-size: 14px;
+  }
+
+  .footer-row .brand {
+    color: var(--paper);
+  }
+
+  .site-footer .brand-mark {
+    filter: invert(95%) sepia(10%) saturate(353%) hue-rotate(340deg) brightness(104%);
+    mix-blend-mode: normal;
+    opacity: 0.92;
+  }
+
+  .site-footer .brand-word .word-accent {
+    color: rgba(246, 241, 230, 0.84);
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+
+  .footer-links a {
+    text-decoration: none;
+  }
+
+  .footer-links a:hover {
+    color: var(--paper);
+  }
+
   .reveal {
     opacity: 0;
-    transform: translateY(28px);
-    transition: opacity 0.9s ease, transform 0.9s cubic-bezier(.2,.7,.2,1);
+    transform: translateY(18px);
+    transition: opacity 700ms ease, transform 700ms ease;
   }
+
   .reveal.in-view {
     opacity: 1;
     transform: translateY(0);
   }
-  .reveal.delay-1 { transition-delay: 0.1s; }
-  .reveal.delay-2 { transition-delay: 0.2s; }
-  .reveal.delay-3 { transition-delay: 0.3s; }
 
-  /* ---------- Mobile responsive tier ---------- */
-  @media (max-width: 720px) {
+  @media (max-width: 1040px) {
+    h1 {
+      font-size: 78px;
+    }
+
+    h2 {
+      font-size: 48px;
+    }
+
+    .product-board,
+    .platform-layout,
+    .agent-layout,
+    .cta-panel {
+      grid-template-columns: 1fr;
+    }
+
+    .board-main {
+      border-right: 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .agent-side {
+      min-height: 260px;
+      justify-content: flex-start;
+    }
+
+    .crane-img {
+      width: 180px;
+    }
+  }
+
+  @media (max-width: 820px) {
+    section {
+      padding: 72px 20px;
+    }
+
+    .nav {
+      min-height: 66px;
+      padding: 0 20px;
+    }
+
+    .nav-links a:not(.button) {
+      display: none;
+    }
+
+    h1 {
+      font-size: 60px;
+    }
+
+    h2 {
+      font-size: 40px;
+    }
+
+    .lead {
+      font-size: 18px;
+    }
+
     .hero {
-      padding-top: 110px;
-      padding-bottom: 70px;
+      min-height: auto;
+      padding-top: 56px;
     }
-    .hero .lede {
-      font-size: 16px;
-      max-width: min(360px, 78vw);
-      margin-bottom: 44px;
+
+    .hero-art {
+      display: none;
     }
-    .hero .actions { gap: 12px; }
-    .hero .actions .cta { padding: 13px 24px; font-size: 12px; }
-    .pillar { padding: 32px 24px 30px; }
-    .pillar .pillar-watermark { font-size: 160px; top: -16px; right: -10px; }
-    .feature-visual { aspect-ratio: 5/4; }
-    .vis-trace, .vis-eval, .vis-block { font-size: 10.5px; }
-    .vis-eval .er { grid-template-columns: 92px 1fr 32px; gap: 10px; font-size: 10.5px; }
-    .preview .container { gap: 40px; }
-    .terminal-body { padding: 20px 22px; font-size: 12px; }
-    .agent-prompt { margin: 40px auto 48px; }
-    .prompt-body { padding: 24px 22px 28px; font-size: 13.5px; }
-    .agent-frameworks .fw { font-size: 12px; padding: 3px 10px; }
-    .begin-form input { font-size: 16px; }
-    footer .container { flex-direction: column; align-items: flex-start; gap: 18px; }
-    nav.top { padding-top: 16px; padding-bottom: 16px; }
-    nav.top .brand { font-size: 19px; }
+
+    .hero-mountains {
+      width: 230px;
+      right: -16px;
+    }
+
+    .three-grid,
+    .agent-notes,
+    .workflow-grid,
+    .metric-stack,
+    .run-summary {
+      grid-template-columns: 1fr;
+    }
+
+    .feature-card,
+    .workflow-step {
+      min-height: auto;
+    }
+
+    .trace-row.depth-1,
+    .trace-row.depth-2 {
+      padding-left: 0;
+    }
+
+    .board-top,
+    .metric-stack,
+    .signal-feed,
+    .trace-list,
+    .system-body {
+      padding: 14px;
+    }
+
+    .event-table {
+      min-width: 560px;
+    }
+
+    .system-body {
+      overflow-x: auto;
+    }
+
+    .cta-panel {
+      padding: 28px;
+    }
+
+    .signup-form {
+      display: grid;
+      min-height: auto;
+    }
+
+    .signup-form input {
+      min-height: 52px;
+    }
+
+    .signup-form button {
+      min-height: 48px;
+      border-left: 0;
+      border-top: 1px solid rgba(23, 21, 17, 0.12);
+      border-radius: 0 0 7px 7px;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .container {
+      max-width: 350px;
+      margin-left: 0;
+      margin-right: auto;
+    }
+
+    .brand {
+      gap: 10px;
+    }
+
+    .brand-mark {
+      width: 40px;
+      height: 40px;
+      flex-basis: 40px;
+    }
+
+    .brand-word {
+      font-size: 24px;
+    }
+
+    h1 {
+      font-size: 48px;
+    }
+
+    h2 {
+      font-size: 34px;
+    }
+
+    .hero-actions,
+    .hero-actions .button {
+      width: 100%;
+    }
+
+    .nav-links {
+      display: none;
+    }
+
+    .product-board {
+      margin-left: -4px;
+      margin-right: -4px;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-    .reveal { opacity: 1; transform: none; }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+    }
+
+    .reveal {
+      opacity: 1;
+      transform: none;
+    }
   }
 </style>
 </head>
 <body>
+<a class="skip-link" href="#main">Skip to content</a>
 
-<canvas id="brushCanvas" aria-hidden="true"></canvas>
-
-<!-- Ambient floating glyphs -->
-<div class="ambient" id="ambient">
-  <div class="glyph" style="top: 18%; left: -3%;" data-depth="0.06">觀</div>
-  <div class="glyph" style="top: 130%; right: -4%;" data-depth="0.05">評</div>
-  <div class="glyph" style="top: 250%; left: -2%;" data-depth="0.05">護</div>
-  <div class="glyph" style="top: 360%; right: -3%;" data-depth="0.06">智</div>
-</div>
-
-<!-- Mountains — ink painting image, full-width along the bottom -->
-<img class="mist" src="assets/mountains.png" alt="" aria-hidden="true" />
-
-<!-- Navigation -->
-<nav class="top" id="topNav">
-  <a href="#" class="brand">
-    <svg class="seal" viewBox="0 0 100 100" aria-hidden="true">
-      <circle cx="50" cy="50" r="38" fill="none" stroke="#14110d" stroke-width="7" stroke-linecap="round" stroke-dasharray="222 32" transform="rotate(95 50 50)"/>
-    </svg>
-    EvalMonk
-  </a>
-  <div class="links">
-    <a href="#capabilities">Platform</a>
-    <a href="#agent">For agents</a>
-    <a href="#path">How it works</a>
-    <a href="#preview">Docs</a>
-    <a href="#begin" class="cta"><span>Start free</span></a>
-  </div>
-</nav>
-
-<main>
-
-  <!-- ============ HERO ============ -->
-  <section class="hero" id="hero">
-    <!-- Enso behind the title — layered brush bristles -->
-    <svg class="enso-bg" viewBox="0 0 600 600" aria-hidden="true">
-      <defs>
-        <!-- Rough outer edge — large-scale displacement breaks the circle into a hand-painted shape -->
-        <filter id="brushRough" x="-15%" y="-15%" width="130%" height="130%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.012 0.06" numOctaves="3" seed="7"/>
-          <feDisplacementMap in="SourceGraphic" scale="22"/>
-        </filter>
-        <!-- Bristle texture — high-frequency displacement creates streaky parallel lines -->
-        <filter id="brushBristle" x="-15%" y="-15%" width="130%" height="130%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.7 0.05" numOctaves="2" seed="3"/>
-          <feDisplacementMap in="SourceGraphic" scale="9"/>
-        </filter>
-        <!-- Tail bristles — fine streaks at the trailing end -->
-        <filter id="brushFine" x="-15%" y="-15%" width="130%" height="130%">
-          <feTurbulence type="fractalNoise" baseFrequency="1.3 0.1" numOctaves="2" seed="11"/>
-          <feDisplacementMap in="SourceGraphic" scale="5"/>
-        </filter>
-      </defs>
-
-      <g id="ensoGroup" transform="rotate(-28 300 300)">
-        <!-- Body of the brush stroke (thickest layer) -->
-        <circle class="enso-body"
-                cx="300" cy="300" r="232"
-                fill="none"
-                stroke="#14110d"
-                stroke-width="36"
-                stroke-linecap="round"
-                stroke-dasharray="1340 110"
-                stroke-dashoffset="1450"
-                filter="url(#brushRough)"
-                opacity="0.92"/>
-        <!-- Inner bristle track 1 -->
-        <circle class="enso-stroke"
-                cx="300" cy="300" r="216"
-                fill="none"
-                stroke="#14110d"
-                stroke-width="3"
-                stroke-linecap="butt"
-                stroke-dasharray="1300 150"
-                stroke-dashoffset="1450"
-                filter="url(#brushBristle)"
-                opacity="0.7"/>
-        <!-- Outer bristle track 1 -->
-        <circle class="enso-stroke"
-                cx="300" cy="300" r="248"
-                fill="none"
-                stroke="#14110d"
-                stroke-width="3"
-                stroke-linecap="butt"
-                stroke-dasharray="1310 140"
-                stroke-dashoffset="1450"
-                filter="url(#brushBristle)"
-                opacity="0.7"/>
-        <!-- Outer fine bristle 2 -->
-        <circle class="enso-stroke"
-                cx="300" cy="300" r="256"
-                fill="none"
-                stroke="#14110d"
-                stroke-width="1.6"
-                stroke-linecap="butt"
-                stroke-dasharray="1250 200"
-                stroke-dashoffset="1450"
-                filter="url(#brushFine)"
-                opacity="0.55"/>
-        <!-- Inner fine bristle 2 -->
-        <circle class="enso-stroke"
-                cx="300" cy="300" r="208"
-                fill="none"
-                stroke="#14110d"
-                stroke-width="1.6"
-                stroke-linecap="butt"
-                stroke-dasharray="1230 220"
-                stroke-dashoffset="1450"
-                filter="url(#brushFine)"
-                opacity="0.5"/>
-      </g>
-    </svg>
-
-    <div class="hero-inner">
-      <h1>
-        <span class="ink-fill">Eval</span>Monk
-      </h1>
-      <p class="lede">
-        The observability, evals, and guardrails platform that AI agents install on themselves.
-      </p>
-      <div class="actions">
-        <a href="#agent" class="cta"><span>Install in one prompt</span></a>
-      </div>
+<header class="site-header">
+  <nav class="nav" aria-label="Primary navigation">
+    <a class="brand" href="#top" aria-label="EvalMonk home">
+      <img class="brand-mark" src="assets/enso.png" width="661" height="378" alt="" aria-hidden="true" />
+      <span class="brand-word">Eval<span class="word-accent">Monk</span></span>
+    </a>
+    <div class="nav-links">
+      <a href="#platform">Platform</a>
+      <a href="#agent">Agent install</a>
+      <a href="#workflow">Workflow</a>
+      <a class="button" href="#start">Start free</a>
     </div>
-  </section>
+  </nav>
+</header>
 
-  <!-- ============ THE THREE PILLARS ============ -->
-  <section class="pillars" id="pillars">
-    <div class="container">
-      <div class="reveal">
-        <div class="eyebrow">The platform</div>
-        <h2 class="section-title">Three layers.<br/>One SDK.</h2>
-        <p class="section-sub">Production agents need observability, evaluation, and guardrails — all running together, sharing context. EvalMonk delivers all three through one decorator-based SDK and one unified dashboard.</p>
+<main id="main">
+  <section class="hero" id="top">
+    <img class="hero-art" src="assets/enso.png" width="661" height="378" alt="" aria-hidden="true" />
+    <img class="hero-mountains" src="assets/mountains.png" width="458" height="148" alt="" aria-hidden="true" />
+
+    <div class="container hero-layout">
+      <div class="hero-copy reveal in-view">
+        <p class="kicker">Reliability layer for production AI agents</p>
+        <h1>EvalMonk</h1>
+        <p class="lead">Observe every agent run, evaluate every prompt change, and block risky inputs before they reach your model. One SDK. One trace context. Built so coding agents can install it themselves.</p>
+        <div class="hero-actions">
+          <a class="button" href="#agent">Install with a prompt</a>
+          <a class="button secondary" href="#platform">See the platform</a>
+        </div>
+        <ul class="hero-proof" aria-label="Highlights">
+          <li>Python, TypeScript, Go</li>
+          <li>100k free traces monthly</li>
+          <li>CI eval reports</li>
+          <li>Prompt-injection guardrails</li>
+        </ul>
       </div>
 
-      <div class="pillar-grid">
-        <div class="pillar reveal delay-1">
-          <div class="pillar-watermark" aria-hidden="true">觀</div>
-          <div class="pillar-num">01 · Observe</div>
-          <h3>Trace every action your agent takes.</h3>
-          <p>Distributed tracing across prompts, tool calls, retrievals, and sub-agent invocations. Token-level cost and latency on every node. Drift detection on outputs, refusal rates, and tool selection — live.</p>
-        </div>
-        <div class="pillar reveal delay-2">
-          <div class="pillar-watermark" aria-hidden="true">評</div>
-          <div class="pillar-num">02 · Evaluate</div>
-          <h3>Score every output against your rubric.</h3>
-          <p>Custom rubrics, golden datasets, LLM-as-judge with bias mitigation, and human review — running on every prompt change, model swap, and PR. Side-by-side and shadow-mode evals on real production traffic.</p>
-        </div>
-        <div class="pillar reveal delay-3">
-          <div class="pillar-watermark" aria-hidden="true">護</div>
-          <div class="pillar-num">03 · Safeguard</div>
-          <h3>Block prompt injection at the edge.</h3>
-          <p>Multi-layer defense — pattern, classifier, and LLM-judge in pipeline — against injection, jailbreaks, PII leakage, and policy violations. Compose policies in plain language; deploy them like code.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============ THE PROBLEM ============ -->
-  <section class="problem" id="problem">
-    <div class="container">
-      <svg class="divider reveal" viewBox="0 0 320 18" aria-hidden="true">
-        <path d="M10,9 C 40,4 70,14 100,9 C 130,4 160,14 200,9 C 240,4 280,14 310,9 L 308,11 C 280,16 240,6 200,11 C 160,16 130,6 100,11 C 70,16 40,6 12,11 Z"/>
-      </svg>
-      <p class="problem-quote reveal" style="margin-top: 80px;">
-        Most production agents fail silently. The model is confident, the logs are quiet, and the failure surfaces only when a customer notices.
-      </p>
-
-      <div class="problem-grid">
-        <div class="problem-card reveal delay-1">
-          <div class="num">01</div>
-          <h4>Prompts you can't measure</h4>
-          <p>You change one line and ship. No baseline, no diff, no signal until a customer complains. Prompt engineering becomes guesswork instead of iteration.</p>
-        </div>
-        <div class="problem-card reveal delay-2">
-          <div class="num">02</div>
-          <h4>Failures you can't see</h4>
-          <p>Hallucinations, tool misuse, stale retrievals, runaway token spend. Your APM stack was built for HTTP requests, not for reasoning chains across multiple models and tools.</p>
-        </div>
-        <div class="problem-card reveal delay-3">
-          <div class="num">03</div>
-          <h4>Adversaries you can't predict</h4>
-          <p>One crafted prompt extracts your system message. Another exfiltrates user data. WAFs don't understand intent — and a generic LLM has no notion of what it's allowed to do for your domain.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============ CAPABILITIES ============ -->
-  <section class="practice" id="capabilities">
-    <div class="container">
-      <div class="reveal">
-        <div class="eyebrow">Capabilities</div>
-        <h2 class="section-title">The reliability stack,<br/>one SDK away.</h2>
-        <p class="section-sub">Three deeply integrated systems sharing one trace context. Wrap a function with one decorator and you get observability, evaluation, and guardrails — without four point solutions and three dashboards.</p>
-      </div>
-
-      <div class="feature-rows">
-
-        <!-- ROW 1: OBSERVE -->
-        <div class="feature-row reveal">
-          <div class="feature-text">
-            <div class="marker">01 · OBSERVE</div>
-            <h3>Trace the entire agent, not just the call.</h3>
-            <p>EvalMonk reconstructs every agent run as a navigable tree of prompts, tool invocations, retrievals, and sub-agent calls — with token-level cost and latency on every node.</p>
-            <ul>
-              <li>Distributed tracing across multi-step, multi-tool, multi-model workflows</li>
-              <li>Live drift detection on output distributions, refusal rates, and tool-selection patterns</li>
-              <li>Replay any production trace against a new prompt or model in one click</li>
-              <li>Native SDKs for Python, TypeScript, Go — and OpenTelemetry for the rest</li>
-            </ul>
+      <div class="product-board reveal in-view" aria-label="EvalMonk product preview">
+        <div class="board-main">
+          <div class="board-top">
+            <div class="board-title"><span class="status-dot"></span><span>agent.contract_review</span></div>
+            <div class="board-meta">live trace</div>
           </div>
-          <div class="feature-visual">
-            <div class="vis-label">trace · agent.summarize #4f2a</div>
-            <div class="vis-trace">
-              <div class="tr root"><span class="ico">▾</span><span>agent.summarize</span><span class="t-time">2.14s</span></div>
-              <div class="tr d1"><span class="ico">·</span><span>system.prompt</span><span class="t-time">124 tok</span></div>
-              <div class="tr d1"><span class="ico">▾</span><span>retrieval.query</span><span class="t-time">340ms</span></div>
-              <div class="tr d2"><span class="ico">·</span><span>embedding.create</span><span class="t-time">182ms</span></div>
-              <div class="tr d2"><span class="ico">·</span><span>vectordb.search</span><span class="t-time">95ms</span></div>
-              <div class="tr d1"><span class="ico">·</span><span>llm.complete · gpt-4o</span><span class="t-time">1.62s</span></div>
-              <div class="tr d1"><span class="ico">·</span><span>safeguard.scan</span><span class="t-time">12ms</span></div>
-              <div class="tr d1 warn"><span class="ico">·</span><span>response.format</span><span class="t-time">drift +18%</span></div>
-              <div class="tr-totals">
-                <span><strong>2.14s</strong> total</span>
-                <span><strong>1.4k</strong> tokens</span>
-                <span><strong>$0.012</strong></span>
-              </div>
-            </div>
-            <div class="vis-stamp">觀</div>
+          <div class="trace-list">
+            <div class="trace-row"><span class="trace-icon">01</span><strong>agent.entrypoint</strong><span class="trace-time">2.14s</span></div>
+            <div class="trace-row depth-1"><span class="trace-icon">T</span><strong>system.prompt</strong><span class="trace-time">124 tok</span></div>
+            <div class="trace-row depth-1"><span class="trace-icon">R</span><strong>retrieval.query</strong><span class="trace-time">340ms</span></div>
+            <div class="trace-row depth-2"><span class="trace-icon">E</span><strong>embedding.create</strong><span class="trace-time">182ms</span></div>
+            <div class="trace-row depth-2"><span class="trace-icon">V</span><strong>vectordb.search</strong><span class="trace-time">95ms</span></div>
+            <div class="trace-row depth-1"><span class="trace-icon">L</span><strong>llm.complete.gpt-4.1</strong><span class="trace-time">1.62s</span></div>
+            <div class="trace-row depth-1"><span class="trace-icon">G</span><strong>guard.scan</strong><span class="trace-time">12ms</span></div>
           </div>
         </div>
-
-        <!-- ROW 2: EVALUATE -->
-        <div class="feature-row reverse reveal">
-          <div class="feature-text">
-            <div class="marker">02 · EVALUATE</div>
-            <h3>Stop guessing whether a prompt is better.</h3>
-            <p>Define what "good" means for your domain — once. Then run every prompt change, model swap, and config tweak against your rubric, your golden set, and your LLM judges. Every regression becomes visible before it ships.</p>
-            <ul>
-              <li>Custom rubrics with weighted criteria, free-form, or structured scoring</li>
-              <li>LLM-as-judge with bias mitigation and human-in-the-loop calibration</li>
-              <li>Side-by-side A/B and shadow-mode evaluation in production traffic</li>
-              <li>CI integration — every PR gets an eval report before review</li>
-            </ul>
+        <div class="board-side">
+          <div class="metric-stack">
+            <div class="metric"><b>94</b><span>faithfulness score</span></div>
+            <div class="metric"><b>3</b><span>blocked injections</span></div>
+            <div class="metric"><b>$0.012</b><span>run cost</span></div>
+            <div class="metric"><b>18%</b><span>drift detected</span></div>
           </div>
-          <div class="feature-visual">
-            <div class="vis-label">eval · contract-summarizer v13</div>
-            <div class="vis-eval">
-              <div class="er"><span>Faithfulness</span><div class="bar"><i style="width:92%"></i></div><span class="score">92</span></div>
-              <div class="er"><span>Completeness</span><div class="bar"><i style="width:87%"></i></div><span class="score">87</span></div>
-              <div class="er"><span>Tone</span><div class="bar"><i style="width:95%"></i></div><span class="score">95</span></div>
-              <div class="er fail"><span>Citation acc.</span><div class="bar"><i style="width:41%"></i></div><span class="score">41</span></div>
-              <div class="er"><span>Latency p95</span><div class="bar"><i style="width:78%"></i></div><span class="score">78</span></div>
-              <div class="er-foot">
-                <span>5 evals · 240 samples</span>
-                <span class="flag">1 regression flagged</span>
-              </div>
-            </div>
-            <div class="vis-stamp">評</div>
-          </div>
-        </div>
-
-        <!-- ROW 3: GUARD -->
-        <div class="feature-row reveal">
-          <div class="feature-text">
-            <div class="marker">03 · SAFEGUARD</div>
-            <h3>Block prompt injection at the edge.</h3>
-            <p>Every input and output is classified in milliseconds against a layered defense — prompt-injection detection, policy enforcement, PII redaction, and domain-specific guardrails you compose yourself.</p>
-            <ul>
-              <li>Multi-layer defense: pattern, classifier, and LLM-judge in pipeline</li>
-              <li>Adversarial corpus continually updated from real-world attacks</li>
-              <li>Compose policies in plain language; version, test, and deploy them like code</li>
-              <li>Block, redact, route to human, or fail-closed — your choice, per policy</li>
-            </ul>
-          </div>
-          <div class="feature-visual">
-            <div class="vis-label">safeguard · last 24 hours</div>
-            <div class="vis-block">
-              <div class="gh"><span>Category</span><span>Action</span><span>Count</span></div>
-              <div class="gr"><span class="cat">prompt_injection</span><span class="act">blocked</span><span class="ct">8,420</span></div>
-              <div class="gr"><span class="cat">jailbreak_attempt</span><span class="act">blocked</span><span class="ct">2,140</span></div>
-              <div class="gr"><span class="cat">pii_extraction</span><span class="act">redacted</span><span class="ct">980</span></div>
-              <div class="gr"><span class="cat">policy_violation</span><span class="act">escalated</span><span class="ct">468</span></div>
-              <div class="gr"><span class="cat">tool_misuse</span><span class="act">blocked</span><span class="ct">400</span></div>
-              <div class="gtotal"><span>Total blocked</span><strong>12,408</strong></div>
-            </div>
-            <div class="vis-stamp">護</div>
+          <div class="signal-feed">
+            <div class="signal"><span class="signal-tag eval">Eval</span><p>Citation accuracy regressed below release threshold.</p></div>
+            <div class="signal"><span class="signal-tag guard">Guard</span><p>Prompt-injection attempt blocked before retrieval.</p></div>
+            <div class="signal"><span class="signal-tag cost">Cost</span><p>Token spike traced to a tool retry loop.</p></div>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ============ AGENT ONBOARDING ============ -->
-  <section class="agent-onboard" id="agent">
+  <section class="section-band" aria-labelledby="why-title">
     <div class="container">
-      <div class="reveal">
-        <div class="eyebrow">Agent-first</div>
-        <h2 class="section-title">Send your agent to EvalMonk.</h2>
-        <p class="section-sub">EvalMonk is built so AI agents can install and operate it themselves. Paste this prompt to any coding agent — Claude Code, Cursor, Cline, your own — and it reads the docs, instruments its own functions, generates a starter eval suite from real traces, and reports back. No human in the loop required.</p>
+      <div class="section-head reveal">
+        <p class="kicker">Why teams add EvalMonk</p>
+        <h2 id="why-title">Agent failures need agent-native telemetry.</h2>
+        <p class="lead muted">Traditional logs tell you a request finished. EvalMonk tells you what the agent believed, which tools it touched, why it failed, and whether the next prompt is safer than the last one.</p>
       </div>
-
-      <div class="agent-prompt reveal delay-1">
-        <div class="prompt-label">
-          <span>Tell your agent</span>
-          <button class="copy-btn" type="button" onclick="copyPrompt()" aria-label="Copy prompt to clipboard">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-            <span id="copyText">Copy</span>
-          </button>
-        </div>
-        <div class="prompt-body" id="promptBody"><span class="verb">Read</span> <span class="url">https://evalmonk.dev/skill.md</span> and follow the instructions to instrument yourself with EvalMonk for observability, evaluation, and prompt-injection defense. Then analyze your last 100 traces, propose evals that catch your recurring failure modes, and open a PR with the changes.</div>
-      </div>
-
-      <div class="agent-steps reveal delay-2">
-        <div class="agent-step">
-          <div class="step-mark">Step 01</div>
-          <h4>It reads the integration guide</h4>
-          <p>The <code>skill.md</code> describes the SDK, the trace schema, the decorator API, and the policy DSL. Your agent ingests it like documentation.</p>
-        </div>
-        <div class="agent-step">
-          <div class="step-mark">Step 02</div>
-          <h4>It instruments its own code</h4>
-          <p>Wraps tool calls and agent entrypoints with <code>@observe</code> and <code>@guard</code>. Generates a starter eval suite from a sample of your real production traces.</p>
-        </div>
-        <div class="agent-step">
-          <div class="step-mark">Step 03</div>
-          <h4>It improves itself over time</h4>
-          <p>Reads its own traces, identifies regression patterns, proposes new evals, and opens PRs with suggested prompt and policy changes — reviewed by you.</p>
-        </div>
-      </div>
-
-      <div class="agent-frameworks reveal delay-3">
-        <span class="fw-label">Works with</span>
-        <span class="fw">Claude Code</span>
-        <span class="fw">Cursor</span>
-        <span class="fw">Cline</span>
-        <span class="fw">Aider</span>
-        <span class="fw">Codex</span>
-        <span class="fw">OpenClaw</span>
-        <span class="fw">Hermes</span>
-        <span class="fw">OpenAI Assistants</span>
-        <span class="fw">LangGraph</span>
-        <span class="fw">AutoGen</span>
-        <span class="fw">CrewAI</span>
-        <span class="fw">your homegrown stack</span>
+      <div class="three-grid">
+        <article class="feature-card reveal">
+          <span class="num">01</span>
+          <h3>Trace reasoning chains.</h3>
+          <p>See prompts, completions, tool calls, retrievals, cost, and latency as one navigable run instead of scattered logs.</p>
+        </article>
+        <article class="feature-card reveal">
+          <span class="num">02</span>
+          <h3>Promote failures into evals.</h3>
+          <p>Turn real traces into golden datasets, rubrics, and CI checks so prompt changes earn their way into production.</p>
+        </article>
+        <article class="feature-card reveal">
+          <span class="num">03</span>
+          <h3>Guard the boundary.</h3>
+          <p>Detect injection, jailbreaks, PII extraction, and tool misuse before the agent acts on untrusted instructions.</p>
+        </article>
       </div>
     </div>
   </section>
 
-  <!-- ============ THE PATH ============ -->
-  <section class="path" id="path">
-    <div class="container">
-      <div class="reveal">
-        <div class="eyebrow">How it works</div>
-        <h2 class="section-title">From first trace to<br/>confident release.</h2>
-        <p class="section-sub">Four steps. The same path teams take to move from "it works on my laptop" to "it serves a million users at 3 a.m. without paging anyone."</p>
+  <section id="platform" aria-labelledby="platform-title">
+    <div class="container platform-layout">
+      <div class="section-head reveal">
+        <p class="kicker">The platform</p>
+        <h2 id="platform-title">One SDK. Three feedback loops.</h2>
+        <p class="lead muted">Each layer shares the same trace context, so the dashboard can connect a bad answer to the exact retrieval, model call, prompt version, and policy decision that produced it.</p>
       </div>
 
-      <div class="path-grid">
-        <div class="path-step reveal delay-1">
-          <div class="step-num">01</div>
-          <h4>Instrument</h4>
-          <p>Your agent (or you) wraps entrypoints with <code>@observe</code>. Every run becomes a structured trace — no schema gymnastics, no logging boilerplate.</p>
-        </div>
-        <div class="path-step reveal delay-2">
-          <div class="step-num">02</div>
-          <h4>Observe</h4>
-          <p>Watch real traffic. Surface failure modes, output drift, latency outliers, and cost spikes. Build a library of failures worth fixing.</p>
-        </div>
-        <div class="path-step reveal delay-3">
-          <div class="step-num">03</div>
-          <h4>Evaluate</h4>
-          <p>Promote real traces into golden datasets. Define rubrics in plain language. CI runs them on every prompt change, automatically.</p>
-        </div>
-        <div class="path-step reveal delay-3">
-          <div class="step-num">04</div>
-          <h4>Safeguard</h4>
-          <p>Compose policies. Deploy guardrails. Block injection and jailbreaks before they touch your model. Sleep through the weekend.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============ CODE PREVIEW ============ -->
-  <section class="preview" id="preview">
-    <div class="container">
-      <div class="reveal">
-        <div class="eyebrow">SDK · Python · TypeScript · Go</div>
-        <h2>Wrap once.<br/>See everything.</h2>
-        <p>EvalMonk fits inside the agent you already shipped. Two decorators turn a function into a fully traced, evaluated, and guarded entrypoint. Native SDKs for Python, TypeScript, and Go — OpenTelemetry for everything else.</p>
-        <a href="#begin" class="cta"><span>Read the docs</span></a>
-      </div>
-      <div class="terminal reveal delay-2">
-        <div class="terminal-header">
-          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-          <span class="title">~/agent · python</span>
-        </div>
-        <div class="terminal-body" id="terminalBody">
-          <span class="ln"><span class="c-mute">from</span> evalmonk <span class="c-mute">import</span> <span class="c-key">observe</span>, <span class="c-key">safeguard</span></span>
-          <span class="ln"></span>
-          <span class="ln"><span class="c-mute">@</span><span class="c-key">observe</span>(<span class="c-str">"contract.summarize"</span>)</span>
-          <span class="ln"><span class="c-mute">@</span><span class="c-key">safeguard</span>(policy=<span class="c-str">"legal-pii-strict"</span>)</span>
-          <span class="ln"><span class="c-mute">def</span> <span class="c-ok">summarize</span>(text: str) <span class="c-mute">-></span> str:</span>
-          <span class="ln">    <span class="c-mute">return</span> agent.run(text)</span>
-          <span class="ln"></span>
-          <span class="ln"><span class="c-mute"># → trace · 4f2a · 1.84s · $0.012</span></span>
-          <span class="ln"><span class="c-mute"># → eval · faithfulness <span class="c-ok">0.94</span> · citation <span class="c-warn">0.41</span></span></span>
-          <span class="ln"><span class="c-mute"># → safeguard · injection blocked × <span class="c-num">3</span></span></span>
-          <span class="ln" id="cursorLine"><span class="cursor-blink"></span></span>
-        </div>
+      <div class="platform-menu reveal">
+        <article class="platform-item">
+          <span class="mark">O</span>
+          <div>
+            <h3>Observe</h3>
+            <p>Distributed traces for prompts, model calls, tools, retrieval, sub-agents, token spend, and latency.</p>
+          </div>
+        </article>
+        <article class="platform-item">
+          <span class="mark">E</span>
+          <div>
+            <h3>Evaluate</h3>
+            <p>Weighted rubrics, LLM-as-judge, human calibration, golden datasets, and shadow-mode production evals.</p>
+          </div>
+        </article>
+        <article class="platform-item">
+          <span class="mark">G</span>
+          <div>
+            <h3>Guard</h3>
+            <p>Layered defenses for injection, jailbreaks, PII leakage, policy violations, and dangerous tool use.</p>
+          </div>
+        </article>
       </div>
     </div>
   </section>
 
-  <!-- ============ PRINCIPLE ============ -->
-  <section class="philosophy">
-    <img class="philosophy-crane" src="assets/crane.png" alt="" aria-hidden="true" />
-    <div class="container">
-      <div class="enso-spinner reveal">
-        <svg viewBox="0 0 100 100">
-          <circle cx="50" cy="50" r="40"/>
-        </svg>
+  <section class="section-band" aria-labelledby="ops-title">
+    <div class="container platform-layout">
+      <div class="system-panel reveal" aria-label="Reliability dashboard preview">
+        <div class="system-bar">
+          <span>release/contract-agent-v14</span>
+          <span>last 24 hours</span>
+        </div>
+        <div class="system-body">
+          <div class="run-summary">
+            <div class="run-cell"><strong>24.8k</strong><span>runs traced</span></div>
+            <div class="run-cell"><strong>97.2%</strong><span>policy pass rate</span></div>
+            <div class="run-cell"><strong>0.41</strong><span>citation regression</span></div>
+            <div class="run-cell"><strong>12.4k</strong><span>attacks blocked</span></div>
+          </div>
+          <table class="event-table">
+            <thead>
+              <tr>
+                <th>Signal</th>
+                <th>Source</th>
+                <th>Status</th>
+                <th>Owner</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Prompt v14 improved completeness</td>
+                <td>CI eval</td>
+                <td><span class="pill ok">pass</span></td>
+                <td>agent-review</td>
+              </tr>
+              <tr>
+                <td>Citation accuracy dropped on invoices</td>
+                <td>shadow traffic</td>
+                <td><span class="pill warn">blocked</span></td>
+                <td>legal-agent</td>
+              </tr>
+              <tr>
+                <td>Tool retry loop increased spend</td>
+                <td>trace drift</td>
+                <td><span class="pill warn">triage</span></td>
+                <td>platform</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
-      <p class="quote reveal delay-1">
-        The next generation of AI agents won't be evaluated by their developers.<br/>
-        They'll evaluate themselves.
-      </p>
-      <div class="attribution reveal delay-2">EvalMonk is the loop that makes that possible.</div>
+
+      <div class="section-head reveal">
+        <p class="kicker">Release confidence</p>
+        <h2 id="ops-title">Ship prompt changes with evidence.</h2>
+        <p class="lead muted">Every release gets a compact answer to the only questions that matter: what changed, where did quality move, which policies fired, and whether production traffic agrees with the test set.</p>
+        <a class="button secondary" href="#workflow">View workflow</a>
+      </div>
     </div>
   </section>
 
-  <!-- ============ BEGIN ============ -->
-  <section class="begin" id="begin">
-    <!-- Bamboo decoration -->
-    <img class="begin-bamboo" src="assets/bamboo.png" alt="" aria-hidden="true" />
+  <section class="agent-section" id="agent" aria-labelledby="agent-title">
+    <div class="container agent-layout">
+      <div>
+        <div class="section-head reveal">
+          <p class="kicker">Agent install</p>
+          <h2 id="agent-title">Send your coding agent here.</h2>
+          <p class="lead muted">EvalMonk is packaged as instructions an AI coding agent can follow. It finds the entrypoints, wraps the right functions, adds guardrails, and opens a PR with eval coverage.</p>
+        </div>
 
-    <div class="container">
-      <h2 class="reveal">Start tracing in four minutes.</h2>
-      <p class="reveal delay-1">Free for the first 100,000 traces a month. No credit card. Two lines of code, or one prompt to your agent.</p>
-      <form class="begin-form reveal delay-2" onsubmit="event.preventDefault(); handleBegin(event);">
-        <input type="email" placeholder="your@work-email.com" required aria-label="Work email" id="beginEmail" />
-        <button type="submit">Get started</button>
-      </form>
-      <div class="begin-or reveal delay-3">
-        <span>or, send your agent first</span>
-        <a href="#agent">Show me the install prompt →</a>
+        <div class="prompt-box reveal">
+          <div class="prompt-toolbar">
+            <span>Install prompt</span>
+            <button class="copy-btn" type="button" id="copyPrompt">Copy</button>
+          </div>
+          <div class="prompt-body" id="promptText">Read <strong>https://evalmonk.dev/skill.md</strong> and follow the instructions to instrument yourself with EvalMonk for observability, evaluation, and prompt-injection defense. Then analyze your last 100 traces, propose evals that catch your recurring failure modes, and open a PR with the changes.</div>
+        </div>
+
+        <div class="agent-notes">
+          <div class="note reveal">
+            <b>Detects the stack</b>
+            <p>Python, TypeScript, JavaScript, or Go, with the package manager already in use.</p>
+          </div>
+          <div class="note reveal">
+            <b>Wraps entrypoints</b>
+            <p>Adds observe and guard calls around the agent surfaces that receive user input.</p>
+          </div>
+          <div class="note reveal">
+            <b>Seeds evals</b>
+            <p>Turns recent traces into starter rubrics and release checks.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="agent-side reveal" aria-hidden="true">
+        <img class="crane-img" src="assets/crane.png" width="351" height="547" alt="" />
       </div>
     </div>
   </section>
 
+  <section class="workflow" id="workflow" aria-labelledby="workflow-title">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="kicker">Workflow</p>
+        <h2 id="workflow-title">From first trace to safer releases.</h2>
+      </div>
+      <div class="workflow-grid">
+        <article class="workflow-step reveal">
+          <span>01</span>
+          <h3>Instrument</h3>
+          <p>Wrap the agent entrypoint and tools. Every run becomes structured without rebuilding the app.</p>
+        </article>
+        <article class="workflow-step reveal">
+          <span>02</span>
+          <h3>Observe</h3>
+          <p>Find silent failures, latency spikes, tool misuse, retrieval misses, and prompt drift in live traffic.</p>
+        </article>
+        <article class="workflow-step reveal">
+          <span>03</span>
+          <h3>Evaluate</h3>
+          <p>Promote traces into rubrics and datasets. CI runs them on each prompt, model, or policy change.</p>
+        </article>
+        <article class="workflow-step reveal">
+          <span>04</span>
+          <h3>Guard</h3>
+          <p>Deploy tested policies that block, redact, escalate, or fail closed before risky actions happen.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="final-cta" id="start" aria-labelledby="start-title">
+    <div class="container">
+      <div class="cta-panel reveal">
+        <div>
+          <p class="kicker">Start free</p>
+          <h2 id="start-title">Give your agents a feedback loop before they meet production.</h2>
+          <p>Free for the first 100,000 traces each month. No credit card. Start with code, or start by giving the install prompt to your agent.</p>
+        </div>
+        <form class="signup-form" id="signupForm">
+          <input id="emailInput" type="email" name="email" placeholder="you@company.com" autocomplete="email" required aria-label="Work email" />
+          <button type="submit">Get started</button>
+        </form>
+      </div>
+    </div>
+  </section>
 </main>
 
-<footer>
-  <div class="container">
-    <div class="brand-mini">
-      <svg viewBox="0 0 100 100" aria-hidden="true">
-        <circle cx="50" cy="50" r="38" fill="none" stroke="#14110d" stroke-width="7" stroke-linecap="round" stroke-dasharray="222 32" transform="rotate(95 50 50)"/>
-      </svg>
-      EvalMonk
+<footer class="site-footer">
+  <div class="footer-row">
+    <a class="brand" href="#top">
+      <img class="brand-mark" src="assets/enso.png" width="661" height="378" alt="" aria-hidden="true" />
+      <span class="brand-word">Eval<span class="word-accent">Monk</span></span>
+    </a>
+    <div class="footer-links">
+      <a href="#platform">Platform</a>
+      <a href="#agent">Agent install</a>
+      <a href="#workflow">Workflow</a>
+      <a href="#start">Pricing</a>
     </div>
-    <div class="links">
-      <a href="#capabilities">Platform</a>
-      <a href="#agent">For agents</a>
-      <a href="#path">How it works</a>
-      <a href="#preview">Docs</a>
-      <a href="#begin">Pricing</a>
-      <a href="#begin">Security</a>
-    </div>
-    <div class="seal-row">
-      <span class="red-seal" aria-hidden="true">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="9" stroke-dasharray="50 8" transform="rotate(-30 12 12)"/></svg>
-      </span>
-      <span>© 2026 EvalMonk, Inc.</span>
-    </div>
+    <span>&copy; 2026 EvalMonk, Inc.</span>
   </div>
 </footer>
 
 <script>
-  // ===== Brush trail (ink calligraphy cursor) =====
-  (function () {
-    if (!window.matchMedia('(hover: hover)').matches) return;
+  const revealItems = document.querySelectorAll(".reveal");
 
-    const canvas = document.getElementById('brushCanvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d', { alpha: true });
-    let DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-
-    function resize() {
-      DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      canvas.width = Math.floor(w * DPR);
-      canvas.height = Math.floor(h * DPR);
-      canvas.style.width = w + 'px';
-      canvas.style.height = h + 'px';
-      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-    }
-    resize();
-    window.addEventListener('resize', resize, { passive: true });
-
-    // Time-based exponential fade — frame-rate independent, drops to ~1% in exactly 4s
-    // alpha(t) = e^(-lambda * t); we want alpha(4) = 0.01 -> lambda = -ln(0.01)/4 ≈ 1.151
-    const FADE_LAMBDA = -Math.log(0.01) / 4;
-    let lastFadeTime = 0;
-
-    function fade(now) {
-      if (!lastFadeTime) lastFadeTime = now;
-      const dt = Math.min((now - lastFadeTime) / 1000, 0.1); // clamp dt for tab-switch jumps
-      lastFadeTime = now;
-      const factor = 1 - Math.exp(-FADE_LAMBDA * dt);
-
-      ctx.save();
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.fillStyle = `rgba(0,0,0,${factor})`;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.restore();
-      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-
-      requestAnimationFrame(fade);
-    }
-    requestAnimationFrame(fade);
-
-    // Smoothed brush stroke — quadratic curve through midpoints + parallel bristle streaks
-    function drawSmoothedStroke(x0, y0, cpx, cpy, x1, y1, w) {
-      // Ink halo — wider, very diffuse, gives the wet-bleed feel
-      if (w > 0.9) {
-        ctx.strokeStyle = 'rgba(20, 17, 13, 0.11)';
-        ctx.lineWidth = w * 2.8;
-        ctx.beginPath();
-        ctx.moveTo(x0, y0);
-        ctx.quadraticCurveTo(cpx, cpy, x1, y1);
-        ctx.stroke();
-      }
-
-      // Inner shadow halo — closer in, slightly darker for layered depth
-      if (w > 1.4) {
-        ctx.strokeStyle = 'rgba(20, 17, 13, 0.18)';
-        ctx.lineWidth = w * 1.7;
-        ctx.beginPath();
-        ctx.moveTo(x0, y0);
-        ctx.quadraticCurveTo(cpx, cpy, x1, y1);
-        ctx.stroke();
-      }
-
-      // Main brush body — crisp ink
-      ctx.strokeStyle = 'rgba(20, 17, 13, 0.82)';
-      ctx.lineWidth = w;
-      ctx.beginPath();
-      ctx.moveTo(x0, y0);
-      ctx.quadraticCurveTo(cpx, cpy, x1, y1);
-      ctx.stroke();
-
-      // Parallel bristle streaks — only on thick strokes, gives horse-hair brush feel
-      if (w > 2.4) {
-        const dx = x1 - x0, dy = y1 - y0;
-        const len = Math.hypot(dx, dy) || 1;
-        const px = -dy / len, py = dx / len;
-
-        ctx.strokeStyle = 'rgba(20, 17, 13, 0.45)';
-        ctx.lineWidth = 0.55;
-
-        // Asymmetric offsets — feels more organic than evenly-spaced bristles
-        const offsets = [-w * 0.36, -w * 0.20, -w * 0.07, w * 0.13, w * 0.27, w * 0.38];
-        for (let i = 0; i < offsets.length; i++) {
-          const o = offsets[i];
-          ctx.beginPath();
-          ctx.moveTo(x0 + px * o, y0 + py * o);
-          ctx.quadraticCurveTo(cpx + px * o, cpy + py * o, x1 + px * o, y1 + py * o);
-          ctx.stroke();
-        }
-      }
-    }
-
-    let p2 = null, p1 = null;
-    let lastT = 0, lastW = 3;
-
-    document.addEventListener('mousemove', (e) => {
-      const x = e.clientX, y = e.clientY;
-      const now = performance.now();
-
-      if (p1 === null) {
-        p1 = { x, y };
-        lastT = now;
-        return;
-      }
-
-      // Brush width from movement speed — slow paints thick, fast tapers wispy
-      const dt = Math.max(now - lastT, 1);
-      const dist = Math.hypot(x - p1.x, y - p1.y);
-      const speed = dist / dt; // px/ms
-      const targetW = Math.max(1.4, Math.min(10, 8.5 - speed * 2.6));
-      // Smooth the width — lets the brush "weight" carry across movements
-      const w = lastW + (targetW - lastW) * 0.4;
-      lastW = w;
-      lastT = now;
-
-      if (p2 === null) {
-        p2 = p1;
-        p1 = { x, y };
-        return;
-      }
-
-      // Quadratic spline through p1 — endpoints are midpoints of (p2,p1) and (p1,current)
-      // This eliminates angular kinks at every mouse sample
-      const m1x = (p2.x + p1.x) / 2;
-      const m1y = (p2.y + p1.y) / 2;
-      const m2x = (p1.x + x) / 2;
-      const m2y = (p1.y + y) / 2;
-
-      drawSmoothedStroke(m1x, m1y, p1.x, p1.y, m2x, m2y, w);
-
-      p2 = p1;
-      p1 = { x, y };
-    }, { passive: true });
-
-    const reset = () => { p1 = null; p2 = null; };
-    document.addEventListener('mouseleave', reset);
-    document.addEventListener('mouseenter', reset);
-    window.addEventListener('blur', reset);
-  })();
-
-  // ===== Nav scrolled state =====
-  (function () {
-    const nav = document.getElementById('topNav');
-    const onScroll = () => {
-      if (window.scrollY > 30) nav.classList.add('scrolled');
-      else nav.classList.remove('scrolled');
-    };
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-  })();
-
-  // ===== Reveal on scroll =====
-  (function () {
-    const els = document.querySelectorAll('.reveal, [data-vis]');
-    const obs = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
+  if ("IntersectionObserver" in window) {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
         if (entry.isIntersecting) {
-          entry.target.classList.add('in-view');
-          obs.unobserve(entry.target);
+          entry.target.classList.add("in-view");
+          observer.unobserve(entry.target);
         }
       });
-    }, { threshold: 0.18, rootMargin: '0px 0px -50px 0px' });
-    els.forEach(el => obs.observe(el));
-  })();
+    }, { threshold: 0.14, rootMargin: "0px 0px -40px 0px" });
 
-  // ===== Enso draw on hero load =====
-  (function () {
-    const group = document.getElementById('ensoGroup');
-    if (!group) return;
-    const body = group.querySelector('.enso-body');
-    const strokes = group.querySelectorAll('.enso-stroke');
-    setTimeout(() => {
-      if (body) {
-        body.style.transition = 'stroke-dashoffset 3.4s cubic-bezier(.5,.05,.3,.98)';
-        body.style.strokeDashoffset = '110';
-      }
-      strokes.forEach((s, i) => {
-        s.style.transition = `stroke-dashoffset 3.4s cubic-bezier(.5,.05,.3,.98) ${i * 0.04}s`;
-        // Each bristle finishes at its own gap so the trailing end frays
-        const gap = parseFloat(s.getAttribute('stroke-dasharray').split(' ')[1]) || 150;
-        s.style.strokeDashoffset = String(gap);
-      });
-    }, 600);
-  })();
-
-  // ===== Parallax for ambient glyphs =====
-  (function () {
-    const glyphs = document.querySelectorAll('.ambient .glyph');
-    if (!glyphs.length) return;
-    let ticking = false;
-
-    function update() {
-      const y = window.scrollY;
-      glyphs.forEach(g => {
-        const d = parseFloat(g.dataset.depth || '0.05');
-        g.style.transform = `translate3d(0, ${-y * d}px, 0)`;
-      });
-      ticking = false;
-    }
-    window.addEventListener('scroll', () => {
-      if (!ticking) { requestAnimationFrame(update); ticking = true; }
-    }, { passive: true });
-    update();
-  })();
-
-  // ===== Begin form =====
-  // ===== Copy agent prompt =====
-  function copyPrompt() {
-    const body = document.getElementById('promptBody');
-    if (!body) return;
-    const text = body.textContent.trim();
-    const label = document.getElementById('copyText');
-
-    const writeFallback = () => {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.setAttribute('readonly', '');
-      ta.style.position = 'absolute';
-      ta.style.left = '-9999px';
-      document.body.appendChild(ta);
-      ta.select();
-      try { document.execCommand('copy'); } catch (e) { /* noop */ }
-      ta.remove();
-    };
-
-    const finish = () => {
-      if (!label) return;
-      const original = label.textContent;
-      label.textContent = 'Copied';
-      setTimeout(() => { label.textContent = original; }, 1800);
-    };
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(finish).catch(() => { writeFallback(); finish(); });
-    } else {
-      writeFallback(); finish();
-    }
+    revealItems.forEach((item) => observer.observe(item));
+  } else {
+    revealItems.forEach((item) => item.classList.add("in-view"));
   }
-  window.copyPrompt = copyPrompt;
 
-  function handleBegin(e) {
-    const input = document.getElementById('beginEmail');
-    const form = e.target;
-    const email = input.value.trim();
+  const copyButton = document.getElementById("copyPrompt");
+  const promptText = document.getElementById("promptText");
+
+  copyButton?.addEventListener("click", async () => {
+    const text = promptText?.textContent?.trim();
+    if (!text) return;
+
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "absolute";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      textarea.remove();
+    }
+
+    const original = copyButton.textContent;
+    copyButton.textContent = "Copied";
+    window.setTimeout(() => {
+      copyButton.textContent = original || "Copy";
+    }, 1600);
+  });
+
+  const signupForm = document.getElementById("signupForm");
+  const emailInput = document.getElementById("emailInput");
+
+  signupForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const email = emailInput?.value.trim();
     if (!email) return;
 
-    // Replace form with confirmation in the same elegant style
-    const wrap = form.parentElement;
-    const msg = document.createElement('div');
-    msg.style.cssText = 'max-width:520px;margin:0 auto;text-align:center;font-family:var(--serif);font-style:italic;font-size:22px;color:var(--ink);padding:30px 0;border-bottom:1.5px solid var(--ink);';
-    msg.innerHTML = `<span style="font-family:var(--sans);font-style:normal;color:var(--vermilion);font-size:11px;letter-spacing:0.32em;text-transform:uppercase;display:block;margin-bottom:14px;">— Received —</span>Check <strong style="font-style:normal;">${email.replace(/[<>&]/g, '')}</strong> for your install prompt and dashboard link.`;
-    form.replaceWith(msg);
-  }
-  window.handleBegin = handleBegin;
+    const confirmation = document.createElement("p");
+    confirmation.className = "lead";
+    confirmation.style.margin = "0";
+    confirmation.style.color = "var(--paper)";
+    confirmation.textContent = `Got it. We will send the install prompt and dashboard link to ${email}.`;
+    signupForm.replaceWith(confirmation);
+  });
 </script>
-
 </body>
 </html>
